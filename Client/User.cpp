@@ -27,8 +27,8 @@ void print_options_logged(string serverIP, string serverPORT, string UID, string
     cout << "->Unregister" << endl;
     cout << "->Open" << endl;
     cout << "->Close" << endl;
-    cout << "->MyAuctions" << endl;
     cout << "->MyEvents" << endl;
+    cout << "->MyReservations" << endl;
     cout << "->List" << endl;
     cout << "->Show_asset" << endl;
     cout << "->Reserve" << endl;
