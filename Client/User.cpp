@@ -100,6 +100,10 @@ int logout_cmd(string UID, string password, UDPuser udp){
         cout << "->Logout successful" << endl;
         return 0;
     }
+    else if(response=="RLO WRP\n"){
+        cout << "->Password incorrect" << endl;
+        return 0;
+    }
     else if(response=="RLO UNR\n"){
         cout << "->User not registered" << endl;
         return 0;
