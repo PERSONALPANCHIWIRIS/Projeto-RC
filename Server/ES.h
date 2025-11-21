@@ -6,8 +6,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/select.h>
+#include <stdbool.h>
 
-#define base_ESport 58000 // Ainda não temos numero de grupo definido
+#define base_ESport 58038
 #define MAX_BUFFER 10240
 #define MAX_COMMAND 65536 //Quantos bytes vamos ler no maximo para o TCP
 
