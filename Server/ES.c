@@ -97,7 +97,64 @@ void handle_udp(int udp_fd) {
     }
     buffer[n] = '\0'; //recvfrom lê tudo de uma vez
     
-    if (verbose) printf("[UDP] Received: %s", buffer);
+    //IP e port do client.
+    if (verbose) printf("[UDP] Received: %s, IP: %s\n, Port: %d\n", buffer, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
+    char command[4];
+    sscanf(buffer, "%3s", command);
+
+        if (strcmp(command, "LIN") == 0) {
+            //chamar função login
+            //Deve verificar se o uid existe, password correspondente e ver se o ficheiro login.txt existe
+
+            if (verbose) printf("[UDP] Received: %s", buffer);
+
+
+            char* reply = "RLI OK\n"; //Em principio corre tudo bem
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        }
+
+        else if (strcmp(command, "LOU") == 0) {
+            //chamar função logout
+            //No lado do user já verifica se está logged in
+            //Verificar user, password e se está registered ou não
+
+            char* reply = "RLO OK\n"; //Em principio corre tudo bem
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        }
+
+        else if (strcmp(command, "UNR") == 0) {
+            //chamar função unregister
+            //Verificar se existe o UID, se está registado, password correta
+
+            char* reply = "RUR OK\n"; //Em principio corre tudo bem
+            //Em response também devemos incluir os events ID's todos REPLY PLACEHOLDER
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        }
+
+        else if (strcmp(command, "LME") == 0) {
+            //chamar função myevents
+            //Verificar a password, se está logged in, e se há events
+
+            char* reply = "RME OK\n"; //Em principio corre tudo bem
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+
+        }
+
+        else if (strcmp(command, "LMR") == 0) {
+            //chamar função myreservations
+            //Verificar login, password, e se há reservations
+
+            char* reply = "RMR OK\n"; //Em principio corre tudo bem
+            //outra vex queando está tudo certo, devemos incluir os event ID's e data/hora valor
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        }
+
+        else{
+            //printf("[UDP] Unknown command: %s\n", command);
+            char* reply = "[UDP] Unknown command: %s\n", command;
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        }
 
     // LIN -> login
     // LOU -> logout
