@@ -16,8 +16,7 @@
 #include <vector>
 
 using namespace std;
-//FIX ME WITH THE REST CHANGE PORT BASED ON GROUP NUMBER
-#define SERVER_PORT "58038" //Já atualizei o port number
+#define SERVER_PORT "58038"
 #define BUFFER_SIZE 1024
 #define MAX_SIZE  65535//tamanho máximo de uma mensagem UDP
 #define UID_SIZE 6
