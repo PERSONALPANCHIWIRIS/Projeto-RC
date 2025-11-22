@@ -171,4 +171,51 @@ void parse_tcp_command(const char *line, int connect_fd) {
     //Deve utilizar read, write
     //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções especificas para cada caso
     //Se está no modo verbose, pritar sempre o que está a ser executado
+    
+    // Extrair command da mensagem
+    char cmd[MAX_CMD] = {0};
+    strncpy(cmd, line, 3);
+    cmd[3] = '\0';
+
+    if (strcmp(cmd, "CRE") == 0) {
+        // create (criar evento)
+        if(handle_cre(line + MAX_CMD, connect_fd) == 0) {
+            const char *reply = "ERR\n";
+            write(connect_fd, reply, strlen(reply));
+        }
+    } else if (strcmp(cmd, "CLS") == 0) {
+        // close (fechar evento)
+        if(handle_cls(line + MAX_CMD, connect_fd) == 0) {
+            const char *reply = "ERR\n";
+            write(connect_fd, reply, strlen(reply));
+        }
+    } else if (strcmp(cmd, "LST") == 0) {
+        // list (mostrar eventos)
+        if(handle_lst(line + MAX_CMD, connect_fd) == 0) {
+            const char *reply = "ERR\n";
+            write(connect_fd, reply, strlen(reply));
+        }
+    } else if (strcmp(cmd, "SED") == 0) {
+        // show (dar ficheiro de evento)
+        if(handle_sed(line + MAX_CMD, connect_fd) == 0) {
+            const char *reply = "ERR\n";
+            write(connect_fd, reply, strlen(reply));
+        }
+    } else if (strcmp(cmd, "RID") == 0) {
+        // reserve (fazer reserva)
+        if(handle_rid(line + MAX_CMD, connect_fd) == 0) {
+            const char *reply = "ERR\n";
+            write(connect_fd, reply, strlen(reply));
+        }
+    } else if (strcmp(cmd, "CPS") == 0) {
+        // changePass (mudar passe)
+        if(handle_cps(line + MAX_CMD, connect_fd) == 0) {
+            const char *reply = "ERR\n";
+            write(connect_fd, reply, strlen(reply));
+        }
+    } else {
+        // Comando desconhecido
+        const char *reply = "ERR\n";
+        write(connect_fd, reply, strlen(reply));
+    }
 }

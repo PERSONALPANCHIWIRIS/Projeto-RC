@@ -10,6 +10,7 @@
 #define base_ESport 58000 // Ainda não temos numero de grupo definido
 #define MAX_BUFFER 10240
 #define MAX_COMMAND 65536 //Quantos bytes vamos ler no maximo para o TCP
+#define MAX_CMD 4 //Tamanho maximo do comando (3 letras + \0)
 
 bool verbose = false; 
 
