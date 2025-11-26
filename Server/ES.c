@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
 
     if (strcmp(argv[argc - 1], "-v") == 0) {
         verbose = true;
+        printf("Verbose mode enabled\n");
     }
 
     printf("ES booted with port: %d\n", ESport);
@@ -85,6 +86,7 @@ int main(int argc, char *argv[]) {
 //Tratar da mensagem recebida UDP
 void handle_udp(int udp_fd) {
     char buffer[MAX_BUFFER];
+    memset(buffer, 0, MAX_BUFFER);
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
 
@@ -104,23 +106,16 @@ void handle_udp(int udp_fd) {
     sscanf(buffer, "%3s", command);
 
         if (strcmp(command, "LIN") == 0) {
-            //chamar função login
-            //Deve verificar se o uid existe, password correspondente e ver se o ficheiro login.txt existe
-
             if (verbose) printf("[UDP] Received: %s", buffer);
-
-
-            char* reply = "RLI OK\n"; //Em principio corre tudo bem
-            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+            //chamar função login
+            login_user(buffer, udp_fd, client_addr, client_len);
         }
 
         else if (strcmp(command, "LOU") == 0) {
             //chamar função logout
             //No lado do user já verifica se está logged in
-            //Verificar user, password e se está registered ou não
-
-            char* reply = "RLO OK\n"; //Em principio corre tudo bem
-            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+            if (verbose) printf("[UDP] Received: %s", buffer);
+            logout_user(buffer, udp_fd, client_addr, client_len);
         }
 
         else if (strcmp(command, "UNR") == 0) {
@@ -228,4 +223,180 @@ void parse_tcp_command(const char *line, int connect_fd) {
     //Deve utilizar read, write
     //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções especificas para cada caso
     //Se está no modo verbose, pritar sempre o que está a ser executado
+}
+
+bool dir_exists(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return false;   
+    return S_ISDIR(st.st_mode);                
+}
+
+//Utilizei asprintf, que não tenho a certeza se funciona nos PC's do Lab
+void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len) {
+    //Deve verificar se o uid existe, password correspondente e ver se o ficheiro login.txt existe
+    char uid[100], password[100];
+    sscanf(buffer + 4, "%s %s", uid, password);
+    
+    //Tira o path para a diretoria do ususario
+    //char user_path[1024];
+    char* user_path = NULL;
+    //snprintf(user_path, sizeof(user_path), "USERS/%s", uid);
+    asprintf(&user_path, "USERS/%s", uid);
+
+    if (dir_exists(user_path)){
+        //Abre o ficheiro da password
+        //char pass_path[1024];
+        //snprintf(pass_path, sizeof(pass_path), "%s/%s_pass.txt", user_path , uid);
+        char* pass_path = NULL;
+        asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
+        FILE *f = fopen(pass_path, "r");
+        if (f == NULL) {
+            char* reply = "RLI NOK\n"; //Erro ao abrir ficheiro
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+            free(user_path);
+            return; 
+        }
+        char stored_password[100];
+        fscanf(f, "%s", stored_password);
+        fclose(f);
+        free(pass_path);
+
+        if (strcmp(stored_password, password) == 0) {
+            //char login_path[1024];
+            //snprintf(login_path, sizeof(login_path), "%s/%s_login.txt", user_path, uid);
+            char* login_path = NULL;
+            asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
+            if (dir_exists(login_path)) {
+                char* reply = "RLI OK\n"; //Já está logged in
+                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+                free(login_path);
+                free(user_path);
+                return;
+            } 
+            FILE *lf = fopen(login_path, "w");
+            fprintf(lf, "logged\n"); //Placeholder?
+            fclose(lf);
+            char* reply = "RLI OK\n"; //Login com sucesso
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
+            free(login_path);
+            free(user_path);
+            return;
+        } 
+        else {
+            char* reply = "RLI WRP\n"; //Password incorreta
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+            free(user_path);
+            return;
+        }
+    }
+
+    else {
+        //Diretorias necessárias
+        mkdir(user_path, 0700);
+        //CREATED
+        //char created_dir[1024];
+        //snprintf(created_dir, sizeof(created_dir), "%s/CREATED", user_path);
+        char* created_dir = NULL;
+        asprintf(&created_dir, "%s/CREATED", user_path);
+        mkdir(created_dir, 0700);
+        //RESERVED
+        //char reserved_dir[1024];
+        //snprintf(reserved_dir, sizeof(reserved_dir), "%s/RESERVED", user_path);
+        char* reserved_dir = NULL;
+        asprintf(&reserved_dir, "%s/RESERVED", user_path);
+        mkdir(reserved_dir, 0700);
+        free(reserved_dir);
+        free(created_dir);
+
+        //Criamos ficheiro para a password
+        //char pass_path[1024];
+        //snprintf(pass_path, sizeof(pass_path), "%s/%s_pass.txt", user_path, uid);
+        char* pass_path = NULL;
+        asprintf(&pass_path, "%s/%s_pass.txt", user_path, uid);
+        //Registamos a password
+        FILE *f = fopen(pass_path, "w");
+        fprintf(f, "%s\n", password);
+        fclose(f);
+        free(pass_path);
+
+        //char login_path[1024];
+        //snprintf(login_path, sizeof(login_path), "%s/%s_login.txt", user_path, uid);
+        char* login_path = NULL;
+        asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
+
+        FILE *lf = fopen(login_path, "w");
+        fprintf(lf, "logged\n"); //Placeholder?
+        fclose(lf);
+        free(login_path);
+
+        char* reply = "RLI REG\n"; //Foi registado
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
+        free(user_path);
+        return;
+    }     
+}
+
+void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len){
+    char uid[100], password[100];
+    sscanf(buffer + 4, "%s %s", uid, password);
+    
+    char* user_path = NULL;
+    asprintf(&user_path, "USERS/%s", uid);
+
+    if (dir_exists(user_path)){
+        //Verificar se esta logged in
+        char* login_path = NULL;
+        asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
+
+        if (dir_exists(login_path)) {
+            char* pass_path = NULL;
+            asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
+
+            FILE *f = fopen(pass_path, "r");
+            if (f == NULL) {
+                char* reply = "RLO NOK\n"; //Erro ao abrir ficheiro
+                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+                free(login_path);
+                free(user_path);
+                free(pass_path);
+                fclose(f); 
+                return; 
+            }
+            char stored_password[100];
+            fscanf(f, "%s", stored_password);
+            fclose(f);
+            free(pass_path);
+
+            if (strcmp(stored_password, password) == 0) {
+                //Remover o ficheiro de login
+                remove(login_path);
+                char* reply = "RLO OK\n"; //Logout com sucesso
+                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
+                free(login_path);
+                free(user_path);
+                return;
+            } 
+            else {
+                char* reply = "RLO WRP\n"; //Password incorreta
+                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+                free(login_path);
+                free(user_path);
+                return;
+            }
+        } 
+        else {
+            char* reply = "RLO NOK\n"; //Não está logged in
+            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+            free(login_path);
+            free(user_path);
+            return;
+        }
+    }
+
+    else{//Usuario nunca foi registado 
+        char* reply = "RLI UNR\n"; 
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        free(user_path);
+        return;
+    }
 }
