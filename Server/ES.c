@@ -185,7 +185,7 @@ void handle_tcp(int tcp_fd) {
 
     if (verbose) printf("[TCP] Received: %s", line);
 
-    //Parse da linah
+    //Parse da linha
     parse_tcp_command(line, connect_fd);
 
     close(connect_fd);
