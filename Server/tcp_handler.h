@@ -12,6 +12,9 @@
 #define F_SIZE_STR 8 // max file size as string (max 7 digits)
 #define F_SIZE 10000000 // 10MB
 #define EID_SIZE 3
+#define PP_SIZE_STR 3 // max people to reserve as string (max 3 digits)
+#define MIN_PP 1
+#define MAX_PP 999
 
 /**
  * Sends appropriate reply to client
@@ -33,7 +36,7 @@ void client_reply(int connect_fd, const char *cmd, const char *status, const cha
 /**
  * Aux function, check if UID is valid
  * @uid: UID
- * Return: 1 if valid, 0 if invalid
+ * Return: 1 if valid, 0 if invalid, -1 if not logged in, -2 if not in database
  */
 int check_uid(const char *uid);
 
@@ -41,14 +44,15 @@ int check_uid(const char *uid);
  * Aux function, check if password is correct for given UID
  * @uid: UID
  * @pwd: password
- * Return: 1 if correct, 0 if incorrect, -1 if not logged in
+ * Return: 1 if correct, 0 if incorrect, -1 if not correct pwd
  */
-int check_pwd(const char *uid, const char *pwd); // Dependendo da implementação, data_base pode ser um ponteiro para a estrutura do utilizador
+int check_pwd(const char *uid, const char *pwd);
+// Dependendo da implementação, data_base pode ser um ponteiro para a estrutura do utilizador
 
 /**
  * Aux function, check if event name is valid
  * @name: event name
- * Return: 1 if valid, 0 if invalid, -1 if not correct pwd
+ * Return: 1 if valid, 0 if invalid
  */
 int check_name(const char *name);
 
@@ -86,6 +90,13 @@ int check_fsize(const char *fsize_str);
  * Return: 1 if valid, 0 if invalid, -1 if does not exist
  */
 int check_eid(const char *eid_str);
+
+/**
+ * Aux function, check if people to reserve is valid
+ * @pp_str: people to reserve string
+ * Return: pp if valid, 0 if invalid
+ */
+int check_pp(const char *pp_str);
 
 /**
  * Handle the CRE command to create an event

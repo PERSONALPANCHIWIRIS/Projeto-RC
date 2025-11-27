@@ -231,40 +231,28 @@ void parse_tcp_command(const char *line, int connect_fd) {
 
     if (strcmp(cmd, "CRE") == 0) {
         // create (criar evento)
-        if(handle_cre(line + MAX_CMD, connect_fd) == 0) {
-            const char *reply = "ERR\n";
-            write(connect_fd, reply, strlen(reply));
-        }
+        handle_cre(line + MAX_CMD, connect_fd); // Passar os argumentos sem o comando
+
     } else if (strcmp(cmd, "CLS") == 0) {
         // close (fechar evento)
-        if(handle_cls(line + MAX_CMD, connect_fd) == 0) {
-            const char *reply = "ERR\n";
-            write(connect_fd, reply, strlen(reply));
-        }
+        handle_cls(line + MAX_CMD, connect_fd);
+
     } else if (strcmp(cmd, "LST") == 0) {
         // list (mostrar eventos)
-        if(handle_lst(line + MAX_CMD, connect_fd) == 0) {
-            const char *reply = "ERR\n";
-            write(connect_fd, reply, strlen(reply));
-        }
+        handle_lst(line + MAX_CMD, connect_fd);
+
     } else if (strcmp(cmd, "SED") == 0) {
         // show (dar ficheiro de evento)
-        if(handle_sed(line + MAX_CMD, connect_fd) == 0) {
-            const char *reply = "ERR\n";
-            write(connect_fd, reply, strlen(reply));
-        }
+        handle_sed(line + MAX_CMD, connect_fd);
+
     } else if (strcmp(cmd, "RID") == 0) {
         // reserve (fazer reserva)
-        if(handle_rid(line + MAX_CMD, connect_fd) == 0) {
-            const char *reply = "ERR\n";
-            write(connect_fd, reply, strlen(reply));
-        }
+        handle_rid(line + MAX_CMD, connect_fd);
+
     } else if (strcmp(cmd, "CPS") == 0) {
         // changePass (mudar passe)
-        if(handle_cps(line + MAX_CMD, connect_fd) == 0) {
-            const char *reply = "ERR\n";
-            write(connect_fd, reply, strlen(reply));
-        }
+        handle_cps(line + MAX_CMD, connect_fd);
+
     } else {
         // Comando desconhecido
         const char *reply = "ERR\n";
