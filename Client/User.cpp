@@ -127,7 +127,7 @@ int unregister_cmd(std::string UID, std::string password, UDPuser udp){
     }
     //verificar se o unregister foi bem sucedido ou não
     else if(response=="RUR NOK\n"){
-        cout << "->Unregister failed" << endl;
+        cout << "->User not logged in" << endl;
         return 1;
     }
     else if(response=="RUR OK\n"){
@@ -188,10 +188,16 @@ void my_events_cmd(string UID, UDPuser udp, string password){
             //imprimir o EID e o status
             cout << "->Event ID: " << eid;
             if(status=="0"){
-                cout << " Closed" << endl;
+                cout << " Event has ended" << endl;
             }
-            else{
-                cout << " Open: Want to close?" << endl;
+            else if(status=="1"){
+                cout << " Reservations still available" << endl;
+            }
+            else if(status=="2"){
+                cout << " Event is sold out" << endl;
+            }
+            else if(status=="3"){
+                cout << " Event has been closed" << endl;
             }
         }
     }
@@ -276,7 +282,7 @@ void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     }
     //event_date indicating the date and time (dd-mm-yyyy hh:mm) of the event
     iss >> event_date;
-    if(event_date.size()!=10 || !verify_date(event_date)){
+    if(event_date.size()!=15 || !verify_date(event_date)){
         cout << "->Error: incorrect event_date format" << endl;
         return;
     }
@@ -390,8 +396,6 @@ void close_cmd(string UID, string password,TCPuser tcp, string inputs){
     }
 }
 
-/*FIX ME WITH THE REST
-
 //LIST(tcp), TCP
 void list_cmd(string UID, TCPuser tcp){
     //mensagem a enviar ao servidor
@@ -405,31 +409,45 @@ void list_cmd(string UID, TCPuser tcp){
     }
     //verificar se o list foi bem sucedido ou não
     else if(response=="RLS NOK\n"){
-        cout << "->No Auctions" << endl;
+        cout << "->No Events" << endl;
     }
     else if(response.substr(0,6)=="RLS OK"){
-        string events=response.substr(7);
+        string events = response.substr(7); 
         istringstream iss(events);
-        string eid;
-        string status;
-        while (iss >> eid >> status){
+        string eid, name, state, event_date;
+        while (iss >> eid >> name >> state >>  event_date){
             //verificar se o EID e o status são válidos
-            if(eid.size()!=3 || !verify_numeric(eid)){
+            if(eid.size() != 3 || !verify_numeric(eid)){
                 cout << "->Error: incorrect EID format" << endl;
                 return;
             }
-            if(status.size()!=1 || !verify_numeric(status)){
-                cout << "->Error: incorrect status format" << endl;
+            // verify name (spec: single word, max 10 alphanumeric)
+            else if(name.size() > 10 || !verify_alphanumeric_name(name)){
+                cout << "->Error: incorrect name format" << endl;
                 return;
             }
-            //imprimir o EID e o status
-            cout << "->Event ID: " << eid;
-            if(status=="0"){
-                cout << " Closed" << endl;
+            // verify state
+            else if(state.size() != 1 || !verify_numeric(state)){
+                cout << "->Error: incorrect state format" << endl;
+                return;
             }
-            else{
-                cout << " Open" << endl;
+            else if(state != "0" && state != "1" && state != "2" && state != "3"){
+                cout << "->Error: unknown state value" << endl;
+                return;
             }
+            // verify date+time using verify_date (expects "dd-mm-yyyy hh:mm")
+            if(event_date.size()!=15 || !verify_date(event_date)){
+                cout << "->Error: incorrect event_date format" << endl;
+                return;
+            }
+
+            // print result using the same style as original file
+            cout << "->Event ID: " << eid << " Name: " << name << " Date: " << event_date << endl;
+            if(state == "0") cout << " Past" << endl;
+            else if(state == "1") cout << " Future - Open" << endl;
+            else if(state == "2") cout << " Future - Sold-out" << endl;
+            else if(state == "3") cout << " Closed by owner" << endl;
+            else cout << " Unknown state" << endl;
         }
     }
     else{//RLS ERR
@@ -437,100 +455,93 @@ void list_cmd(string UID, TCPuser tcp){
     }
 }
 
-//SHOWRECORD(udp, EID), UDP
-void show_record_command(string EID, UDPuser upd){
-    cout << "->show_record" << endl;
-    //mensagem a enviar ao servidor
-    string message = "SRC " + EID + "\n";
-    string response = upd.connect(message);
-    //verificar se houve erro na conexão
+//SHOWRECORD(tcp, EID), TCP
+void show_cmd(TCPuser tcp, string inputs){
+    cout << "->show..." << endl;
+    istringstream iss(inputs);
+    string command, EID, fname, fsize, rest;
+    iss >> command >> EID;
+    if(EID.size()!=3 || !verify_numeric(EID)){
+        cout << "->Error: incorrect EID format" << endl;
+        return;
+    }
+    string message = "SED " + EID + "\n";
+    string response = tcp.connect_assets(message);
     if(response=="error"){
         cout << "->Error connecting to server" << endl;
+        return;
     }
-    //verificar se o show_record foi bem sucedido ou não
-    else if(response=="RRC NOK\n"){
-        cout << "->Error: auction does not exist" << endl;
+    else if(response=="RSE NOK\n"){
+        cout << "->Error: no such event exists" << endl;
+        return;
     }
-    else if(response.substr(0,6)=="RRC OK"){
-        string record=response.substr(6);
-        istringstream iss(record);
-        vector<string> record_vector;
-        while (iss){
-            string sub;
-            iss >> sub;
-            //colocar a mensagem num vetor
-            record_vector.push_back(sub);
-        }
-        cout << "->Event ID: " << EID << endl;
-        if(record_vector[0].size()!=6 || !verify_numeric(record_vector[0])){
-            cout << "->Error: incorrect Host ID format" << endl;
-            return;
-        }
-        cout << "->Host ID: " << record_vector[0] << endl;
-        if(record_vector[1].size()>10 || !verify_alphanumeric_name(record_vector[1])){
-            cout << "->Error: incorrect Action Name format" << endl;
-            return;
-        }
-        cout << "->Action Name: " << record_vector[1] << endl;
-        if(record_vector[2].size()>24 || !verify_filename(record_vector[2])){
-            cout << "->Error: incorrect Product format" << endl;
-            return;
-        }
-        cout << "->Product: " << record_vector[2] << endl;
-        if(record_vector[3].size()>6 || !verify_numeric(record_vector[3])){
-            cout << "->Error: incorrect Minimum Product bid format" << endl;
-            return;
-        }
-        cout << "->Minimum Product bid: " << record_vector[3] << endl;
-        cout << "->Starting date: " << record_vector[4] << endl;
-        cout << "->Starting Time: " << record_vector[5] << endl;
-        if(record_vector[6].size()>5 || !verify_numeric(record_vector[6])){
-            cout << "->Error: incorrect Time active format" << endl;
-            return;
-        }
-        cout << "->Time active [s]: " << record_vector[6] << endl;
-        cout << endl;
-        int i=7;
-        while(record_vector[i]=="B"){
-            if(record_vector[i+1].size()!=6 || !verify_numeric(record_vector[i+1])){
-                cout << "->Error: incorrect Bidder ID format" << endl;
-                return;
-            }
-            cout << "->Bidder ID: " << record_vector[i+1] << endl;
-            if(record_vector[i+2].size()>10 || !verify_alphanumeric_name(record_vector[i+2])){
-                cout << "->Error: incorrect Bidder Name format" << endl;
-                return;
-            }
-            cout << "->Bidder Value: " << record_vector[i+2] << endl;
-            cout << "->Bidder Date: " << record_vector[i+3] << endl;
-            cout << "->Bidder Time: " << record_vector[i+4] << endl;
-            if(record_vector[i+5].size()>5 || !verify_numeric(record_vector[i+5])){
-                cout << "->Error: incorrect Bid Time format" << endl;
-                return;
-            }
-            cout << "->Bid Time[s]: " << record_vector[i+5] << endl;
-            cout << endl;
-            i+=6;
-        }
-        if(record_vector[i]=="E"){
-            cout << "->Auction closed: Better luck next time!" << endl;
-            cout << "->End date: " << record_vector[i+1] << endl;
-            cout << "->End Time: " << record_vector[i+2] << endl;
-            cout << "->Bid Time[s]: " << record_vector[i+3] << endl;
-            cout << endl;
-        }
-    }
-    else{//RRC ERR
-        cout <<"->Error occurred!" << endl;
-    }
+    else if(response.substr(0,6)=="RSE OK"){
+        string inputs = response.substr(7);
+        istringstream iss(inputs);
+        string owner, name, event_date, attendance, reserved, fname, fsize;
+        iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize;
 
+        if(fname.size()>24 || !verify_filename(fname)){
+            cout << "->Error: incorrect filename format" << endl;
+            return;
+        }
+        else if(fsize.size()>8 || !verify_numeric(fsize)){
+            cout << "->Error: incorrect fsize format" << endl;
+            return;
+        }
+        else if(fsize.size() > 10*pow(10,6)){
+            cout << "->Error: file too big" << endl;
+            return;
+        }
+        else if (event_date.size()!=15 || !verify_date(event_date)){
+            cout << "->Error: incorrect event_date format" << endl;
+            return;
+        }
+        else if(attendance.size()>3 || attendance.size()<2 || !verify_numeric(attendance)){
+            cout << "->Error: incorrect attendance format" << endl;
+            return;
+        }
+        else if(reserved.size()>3 || reserved.size()<2 || !verify_numeric(reserved)){
+            cout << "->Error: incorrect reserved format" << endl;
+            return;
+        }
+        //na directoria /SHOWN colocar o asset com
+        string filename = "Client/SHOWN/" + fname;
+        //apagar ficheiro se já existir (substiuição)
+        remove(filename.c_str());
+        //criar ficheiro
+        ofstream file(filename);
+        if(file){
+            int spaces=8;
+            while(spaces>0 && !response.empty()){
+                if(response[0]==' ') spaces--;
+                response.erase(0,1);
+            }
+            file << response;
+            file.close();
+        } else {
+            cout << "->Error: couldn't open file" << endl;
+            return;
+        }
+
+        cout << "->Event owner: " << owner << endl;
+        cout << "->Event name: " << name << endl;
+        cout << "->Event date: " << event_date << endl;
+        cout << "->Attendance size: " << attendance << endl;
+        cout << "->Seats reserved: " << reserved << endl;
+        cout << "->File saved: " << filename << endl;
+    }
+    else{//RSE ERR
+        cout << "->Error occurred!" << endl;
+    }
 }
+
 
 //RESERVE(tcp, UID, password, EID, value), TCP
 void reserve(string UID, string password, TCPuser tcp, string inputs){
     cout << "->reserving..." << endl;
     istringstream iss(inputs);
-    string command, EID, value;
+    string command, EID, people;
     iss >> command;
     iss >> EID;
     //verificar se o EID e o value são válidos
@@ -538,13 +549,13 @@ void reserve(string UID, string password, TCPuser tcp, string inputs){
         cout << "->Error: incorrect EID format" << endl;
         return;
     }
-    iss >> value;
-    if(value.size()>6 || !verify_numeric(value)){
+    iss >> people;
+    if(people.size()>4 || people.size()<1 || !verify_numeric(people)){
         cout << "->Error: incorrect value format" << endl;
         return;
     }
     //mensagem a enviar ao servidor
-    string message = "RID " + UID + " " + password + " " + EID + " " + value + "\n";
+    string message = "RID " + UID + " " + password + " " + EID + " " + people + "\n";
     string response = tcp.server_connect(message);
     //verificar se houve erro na conexão
     if(response=="error"){
@@ -555,13 +566,20 @@ void reserve(string UID, string password, TCPuser tcp, string inputs){
     }
     else if(response=="RRI ACC\n"){
         cout << "->Event accepted, best of luck!" << endl;
-        cout << "->Value: " << value << endl;
+        cout << "->People: " << people << endl;
     }
-    else if(response=="RRI REF\n"){
-        cout << "->Error: reservation refused, another reservation is higher" << endl;
+    else if (response=="RRI WRP\n"){
+        cout << "->Password incorrect" << endl;
+        return 0;
     }
-    else if(response=="RRI ILG\n"){
-        cout << "->Error: you can't reserve your own event" << endl;
+    else if(response=="RRI REJ\n"){
+        cout << "->Error: not enough seats available" << endl;
+    }
+    else if(response=="RRI PST\n"){
+        cout << "->Error: event has passed" << endl;
+    }
+    else if(response=="RRI CLS\n"){
+        cout << "->Error: event is closed" << endl;
     }
     else if(response=="RRI NOK\n"){
         cout << "->Error: event not active" << endl;
@@ -571,81 +589,6 @@ void reserve(string UID, string password, TCPuser tcp, string inputs){
     }
 }
 
-//SHOWASSET(tcp, EID), TCP
-void show_asset(TCPuser tcp, string inputs){
-    cout << "->show_asset" << endl;
-    istringstream iss(inputs);
-    string command, EID, asset, fsize, fdata;
-    iss >> command;
-    iss >> EID;
-    //verificar se o EID é válido
-    if(EID.size()!=3 || !verify_numeric(EID)){
-        cout << "->Error: incorrect EID format" << endl;
-        return;
-    }
-    //mensagem a enviar ao servidor
-    string message = "SAS " + EID + "\n";
-    string response = tcp.connect_assets(message);
-    //verificar se houve erro na conexão
-    if(response=="error"){
-        cout << "->Error connecting to server" << endl;
-    }
-    //verificar se o show_asset foi bem sucedido ou não
-    else if(response=="RSA NOK\n"){
-        cout << "->Error: no such auction exists" << endl;
-    }
-    else if(response.substr(0,6)=="RSA OK"){
-        string asset=response.substr(7);
-        iss.clear();
-        istringstream iss(asset);
-        //verificar se o asset é válido
-        iss >> asset;
-        if(asset.size()>24 || !verify_filename(asset)){
-            cout << "->Error: incorrect asset format" << endl;
-            return;
-        }
-        //verificar se o fsize é válido
-        iss >> fsize;
-        if(fsize.size()>8 || !verify_numeric(fsize)){
-            cout << "->Error: incorrect fsize format" << endl;
-            return;
-        }
-        int ctr=stoi(fsize);
-        if(ctr>10*pow(10,6)){
-            cout << "->Error: asset file is too big" << endl;
-            return;
-        }
-        //na directoria /SHOWN colocar o asset com
-        string filename= "Client/SHOWN/" + asset;
-        //apagar ficheiro se já existir (substiuição)
-        remove(filename.c_str());
-        //criar ficheiro
-        ofstream file(filename);
-        if(file){
-            int spaces=4;
-            //apagar a frase até os dados começarem         
-            while(spaces>0){
-                if(response[0]==' '){
-                    spaces--;
-                }
-                response=response.erase(0,1);
-            }
-            file << response;
-            file.close();
-        }
-        else{
-            cout << "->Error: couldn't open file" << endl;
-            return;
-        }
-        cout << "->Asset saved successfully!" << endl;
-        //mostrar o diretório onde se encontra o asset
-        cout << "->Asset name: " << filename << endl;
-    }
-    else{//RSA ERR
-        cout <<"->Error occurred!" << endl;
-    }
-}
-FIX ME WITH THE REST*/
 
 //CHANGEPASS(tcp, UID, old_password, new_password), TCP
 void change_pass_cmd(string UID, string old_password, string new_password, TCPuser tcp){
@@ -821,7 +764,7 @@ int main(int argc, char *argv[]){
             password=new_password;
             command.clear();
         }
-        /*FIX ME WITH THE REST
+        
         //CREATE(tcp)
         else if(command=="create"&& logged_in==1){
             create_cmd(UID, password, tcp, Inputs);
@@ -832,29 +775,15 @@ int main(int argc, char *argv[]){
             close_cmd(UID, password, tcp, Inputs);
             command.clear();
         }
+        
         //LIST(udp)
         else if((command=="list" )){
             list_cmd(UID, tcp);
             command.clear();
         }
-        //SHOWASSET(tcp)
-        else if((command=="show_asset" )){
+        //SHOW(tcp)
+        else if((command=="show" )){
             show_asset(tcp, Inputs);
-            command.clear();
-        }
-        //SHOWRECORD(udp)
-        else if(command=="show_record" || command=="sr"){
-            iss >> AID;
-            //verificar se o AID é válido
-            if(AID.size()!=3 || !verify_numeric(AID)){
-
-                cout << "->Invalid AID" << std::endl;
-                AID.clear();
-                command.clear();
-                continue;
-            }
-            show_record_command(AID, udp);
-            AID.clear();
             command.clear();
         }
         //RESERVE(tcp)
@@ -862,7 +791,6 @@ int main(int argc, char *argv[]){
             reserve(UID, password, tcp, Inputs);
             command.clear();
         }
-        */
         else{
             cout << "->Invalid command" << std::endl;  
         }
