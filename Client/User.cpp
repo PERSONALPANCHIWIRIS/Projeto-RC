@@ -25,14 +25,14 @@ void print_options_logged(string serverIP, string serverPORT, string UID, string
     cout << "-------User Options-------" << endl;
     cout << "->Logout" << endl;
     cout << "->Unregister" << endl;
-    cout << "->Open" << endl;
+    cout << "->Create" << endl;
     cout << "->Close" << endl;
     cout << "->MyEvents" << endl;
     cout << "->MyReservations" << endl;
     cout << "->List" << endl;
-    cout << "->Show_asset" << endl;
+    cout << "->ChangePassword" << endl;
     cout << "->Reserve" << endl;
-    cout << "->Show_record" << endl;
+    cout << "->Show_event" << endl;
     cout << "--------------------------" << endl;
 }
 
@@ -43,9 +43,8 @@ void print_options_nlogged(string serverIP, string serverPORT) {
     cout << "->Server Port: " << serverPORT << endl;
     cout << "-------User Options-------" << endl;
     cout << "->Login" << endl;
-    cout << "->Show_record" << endl;
+    cout << "->Show_event" << endl;
     cout << "->List" << endl;
-    cout << "->Show_asset" << endl;
     cout << "->Exit" << endl;
     cout << "--------------------------" <<endl;
 }
@@ -165,7 +164,6 @@ void my_events_cmd(string UID, UDPuser udp, string password){
     }
     else if(response=="RME WRP\n"){
         cout << "->Password incorrect" << endl;
-        return 0;
     }
     else if(response=="RME NOK\n"){
         cout << "->No events" << endl;
@@ -225,7 +223,6 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
     }
     else if(response=="RMR WRP\n"){
         cout << "->Password incorrect" << endl;
-        return 0;
     }
     else if(response.substr(0,6)=="RMR OK"){
         string events=response.substr(7);
@@ -329,7 +326,6 @@ void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     }
     else if(response=="RCE WRP\n"){
         cout << "->Password incorrect" << endl;
-        return 0;
     }
     else if(response.substr(0,6)=="RCE OK"){
         string record=response.substr(7);
@@ -402,7 +398,7 @@ void list_cmd(string UID, TCPuser tcp){
     cout << "->list..." << endl;
     //mensagem a enviar ao servidor
     string message = "LST\n";
-    string response = tcp.connect(message);
+    string response = tcp.connect_assets(message);
     //verificar se houve erro na conexão
     if(response=="error"){
         cout << "->Error connecting to server" << endl;
@@ -570,7 +566,6 @@ void reserve(string UID, string password, TCPuser tcp, string inputs){
     }
     else if (response=="RRI WRP\n"){
         cout << "->Password incorrect" << endl;
-        return 0;
     }
     else if(response=="RRI REJ\n"){
         cout << "->Error: not enough seats available" << endl;
@@ -580,6 +575,9 @@ void reserve(string UID, string password, TCPuser tcp, string inputs){
     }
     else if(response=="RRI CLS\n"){
         cout << "->Error: event is closed" << endl;
+    }
+    else if(response=="RRI SLD\n"){
+        cout << "->Error: event is sold out" << endl;
     }
     else if(response=="RRI NOK\n"){
         cout << "->Error: event not active" << endl;
@@ -759,7 +757,7 @@ int main(int argc, char *argv[]){
                 command.clear();
                 continue;
             }
-            change_password_cmd(UID, password, new_password, tcp);
+            change_pass_cmd(UID, password, new_password, tcp);
             //atualizar a password
             password=new_password;
             command.clear();
@@ -776,14 +774,14 @@ int main(int argc, char *argv[]){
             command.clear();
         }
         
-        //LIST(udp)
+        //LIST(tcp)
         else if((command=="list" )){
             list_cmd(UID, tcp);
             command.clear();
         }
         //SHOW(tcp)
         else if((command=="show" )){
-            show_asset(tcp, Inputs);
+            show_cmd(tcp, Inputs);
             command.clear();
         }
         //RESERVE(tcp)
