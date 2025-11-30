@@ -1,4 +1,4 @@
-#include "ES.h"
+#include "udp_not_tested.h"
 
 int main(int argc, char *argv[]) {
     int ESport = base_ESport; //Valor por defeito
@@ -207,6 +207,11 @@ bool dir_exists(const char *path) {
     return S_ISDIR(st.st_mode);                
 }
 
+bool path_exists(const char *path) {
+    struct stat st;
+    return stat(path, &st) == 0;
+}
+
 //Utilizei asprintf, que não tenho a certeza se funciona nos PC's do Lab
 void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len) {
     char uid[100], password[100];
@@ -226,7 +231,7 @@ void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, 
     char* login_path = NULL;
     asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
 
-    if (dir_exists(login_path)) {
+    if (path_exists(login_path)) {
         char* reply = "RLI OK\n"; //Já está logged in
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         free(login_path);
@@ -236,7 +241,7 @@ void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, 
     } 
 
     if (dir_exists(user_path)) {//Ja está registado
-        if (!dir_exists(pass_path)) {
+        if (!path_exists(pass_path)) {
             //Usuario ja foi registado, usuario antigo
             create_directories(user_path, uid, password, udp_fd, client_addr, client_len);
             return;
@@ -290,6 +295,7 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     sscanf(buffer + 4, "%s %s", uid, password);
 
     if (!uid_is_valid(uid)){
+        //printf("DEBUG 1\n");
         char* reply = "RLO NOK\n"; //UID inválido
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
@@ -303,7 +309,7 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         char* login_path = NULL;
         asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
 
-        if (dir_exists(login_path)) {
+        if (path_exists(login_path)) {
             char* pass_path = NULL;
             asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
 
@@ -341,6 +347,7 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
             }
         } 
         else {
+            //printf("DEBUG 2\n");
             char* reply = "RLO NOK\n"; //Não está logged in
             sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
             free(login_path);
@@ -374,7 +381,7 @@ void unregister_user(const char *buffer, int udp_fd, struct sockaddr_in client_a
         char* login_path = NULL;
         asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
 
-        if (dir_exists(login_path)){//Logged in
+        if (path_exists(login_path)){//Logged in
             char* pass_path = NULL;
             asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
             FILE *f = fopen(pass_path, "r");
@@ -455,7 +462,7 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
 
     char* login_path = NULL;
     asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
-    if (!dir_exists(login_path)){
+    if (!path_exists(login_path)){
         char* reply = "RME NLG\n"; //Usuario não está logged in
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         free(user_path);
@@ -508,6 +515,7 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
 
         char* event_path = NULL;
         asprintf(&event_path, "EVENTS/%s", eid);
+        //printf("DEBUG: Event Path: %s\n", event_path);
 
 
         //Adicionar à lista
@@ -528,7 +536,10 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         }
         n_entries++;
         free(event_path);
+        
     }
+    //printf("TUDO ESTA NA LINKED LIST\n");
+    //printf("DEBUG: Number of created events: %d\n", n_entries);
     closedir(dir);
 
     if (n_entries <= 0){
@@ -596,7 +607,7 @@ bool uid_is_valid(const char *uid){
 void status_events(struct event_list *events, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len){
     //Resposta a ser enviada
     char *reply = NULL;
-    asprintf(&reply, "RME OK ");
+    asprintf(&reply, "RME OK\n");
 
     struct event_list *current = events;
     while (current != NULL) {
@@ -607,30 +618,46 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             continue;
         }
         char *end_path = NULL;
-        asprintf(&end_path, "END_%s.txt", current->eid);
-        if (dir_exists(end_path)) {
+        asprintf(&end_path, "%s/END_%s.txt", current->event_path, current->eid);
+        //printf("DEBUG: End Path: %s\n", end_path); 
+        if (path_exists(end_path)) {
             //Evento fechado
-            strcat(reply, "3 ");
+            asprintf(&reply, "%s%s 3 ", reply, current->eid);
+            //strcat(reply, "%s 3 ", current->eid);
             free(end_path);
+            current = current->next;
             continue; 
         } 
         free(end_path);
 
         char *start_path = NULL;
-        asprintf(&start_path, "START_%s.txt", current->eid);
+        asprintf(&start_path, "%s/START_%s.txt", current->event_path, current->eid);
+        //printf("DEBUG: Start Path: %s\n", start_path);
         FILE *fstart = fopen(start_path, "r");
         char *start_content = NULL;
-        fprintf(fstart, "%s", start_content);
+        //printf("DEBUG: Before reading start content\n");
+
+        fseek(fstart, 0, SEEK_END);
+        long size = ftell(fstart);
+        rewind(fstart);
+
+        start_content = malloc(size + 1);
+        //fprintf(fstart, "%s", start_content);
+        fread(start_content, 1, size, fstart);
+        start_content[size] = '\0';
+        //printf("DEBUG: Imed after reading start content\n");
         fclose(fstart);
         free(start_path);
 
         //Tirar os dados do start_content
         int event_attend;
         int start_day, start_month, start_year;
-        int star_hour, start_minute;
-        parse_start_content(start_content, &event_attend, &start_day, &start_month, &start_year, &star_hour, &start_minute);
+        int start_hour, start_minute;
+        //printf("DEBUG: Start Content: %s\n", start_content);
+        parse_start_content(start_content, &event_attend, &start_day, &start_month, &start_year, &start_hour, &start_minute);
+        //printf("POST PARSE\n");
         free(start_content);
-        if (check_event_date(start_day, start_month, start_year, star_hour, start_minute)) {
+        if (check_event_date(start_day, start_month, start_year, start_hour, start_minute)) {
             //Evento futuro
             char *reservations_path = NULL;
             asprintf(&reservations_path, "%s/RESERVATIONS", current->event_path);
@@ -648,18 +675,27 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             free(reservations_path);
             if (n_reservations >= event_attend) {
                 //Evento cheio
-                strcat(reply, "2 ");
+                asprintf(&reply, "%s%s 2 ", reply, current->eid);
+                //strcat(reply, "%s 2 ", current->eid);
+                current = current->next;
+                continue;
             }
             else {
                 //Evento com vagas
-                strcat(reply, "1 ");
+                asprintf(&reply, "%s%s 1 ", reply, current->eid);
+                //strcat(reply, "%s 1 ", current->eid);
+                current = current->next;
+                continue;
             }
         }
         else {
             //Evento passado
-            strcat(reply, "0 ");
+            asprintf(&reply, "%s%s 0 ", reply, current->eid);
+            //strcat(reply, "%s 0 ", current->eid);
+            current = current->next;
             continue;
         }
+        //current = current->next;
     }
     sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
 
@@ -759,7 +795,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
 
     char *login_path = NULL;
     asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
-    if (!dir_exists(login_path)){
+    if (!path_exists(login_path)){
         char* reply = "RMR NLG\n"; //Usuario não está logged in
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         free(user_path);
@@ -798,7 +834,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
     int n_entries = 0;
 
     char *reply = NULL;
-    asprintf(&reply, "RMR OK ");
+    asprintf(&reply, "RMR OK\n");
     while ((entry = readdir(dir)) != NULL) {
         //Ignorar . e ..
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
@@ -821,6 +857,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
             free(file_path);
             continue;
         }
+        //printf("DEBUG: Reservation line: %s\n", line);
 
         fclose(fres);
         free(file_path);
@@ -838,11 +875,15 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         {
             n_entries++;//Quantas reservations existem
             char *temp = NULL;
-            asprintf(&temp, "%d %02d-%02d-%04d %02d:%02d %d ", eid_value, day, month, year, hour, minute, seats);
-            strcat(reply, temp);  
+            asprintf(&temp, "%d %02d-%02d-%04d %02d:%02d %d\n", eid_value, day, month, year, hour, minute, seats);
+            char *new_reply = NULL;
+            asprintf(&new_reply, "%s%s", reply, temp);
+            free(reply);
             free(temp);
+            reply = new_reply;
         }
     }
+    //sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
 
     if (n_entries <= 0){
         char* reply = "RMR NOK\n"; //Não existem reservas
@@ -851,6 +892,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         closedir(dir);
         return;
     }
+    sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
 
     closedir(dir);
     free(reservation_path);
