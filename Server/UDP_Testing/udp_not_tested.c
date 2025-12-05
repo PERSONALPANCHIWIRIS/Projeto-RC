@@ -106,7 +106,7 @@ void handle_udp(int udp_fd) {
     sscanf(buffer, "%3s", command);
 
         if (strcmp(command, "LIN") == 0) {
-            if (verbose) printf("[UDP] Received: %s", buffer);
+            //if (verbose) printf("[UDP] Received: %s", buffer);
             //chamar função login
             login_user(buffer, udp_fd, client_addr, client_len);
         }
@@ -636,7 +636,7 @@ bool pass_is_valid(const char *password){
 void status_events(struct event_list *events, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len){
     //Resposta a ser enviada
     char *reply = NULL;
-    asprintf(&reply, "RME OK\n");
+    asprintf(&reply, "RME OK ");
 
     struct event_list *current = events;
     while (current != NULL) {
@@ -726,7 +726,10 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
         }
         //current = current->next;
     }
+    asprintf(&reply, "%s\n", reply);
     sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+    //printf("Sent reply: %s", reply);
+    free(reply);
 
     //Libertar a lista
     current = events;
@@ -869,7 +872,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
     int n_entries = 0;
 
     char *reply = NULL;
-    asprintf(&reply, "RMR OK\n");
+    asprintf(&reply, "RMR OK ");
     while ((entry = readdir(dir)) != NULL && (n_entries <= 50)) {
         //Ignorar . e ..
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
@@ -897,24 +900,27 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         fclose(fres);
         free(file_path);
 
-        int eid_value, seats;
+        char *eid_value;
+        int seats;
         int day, month, year;
-        int hour, minute;
+        int hour, minute, second;
 
         // EID num_reserved_seats DD-MM-YYYY HH:MM
         ///////////////A ideia aqui é que, na altura da reserva, guardamos no r-uid-date.txt esta informação toda
-        if (sscanf(line, "%d %d %d-%d-%d %d:%d",
-                &eid_value, &seats,
+        ///////////////Em seats guardamos o numero de lugares que o user reservou
+        if (sscanf(line, "%s %d %d-%d-%d %d:%d:%d",
+                eid_value, &seats,
                 &day, &month, &year,
-                &hour, &minute) == 7)
+                &hour, &minute, &second) == 8)
         {
             n_entries++;//Quantas reservations existem
             char *temp = NULL;
-            asprintf(&temp, "%d %02d-%02d-%04d %02d:%02d %d\n", eid_value, day, month, year, hour, minute, seats);
+            asprintf(&temp, "%s %02d-%02d-%04d %02d:%02d:%02d %d ", eid_value, day, month, year, hour, minute, second, seats);
             char *new_reply = NULL;
             asprintf(&new_reply, "%s%s", reply, temp);
             free(reply);
             free(temp);
+            //free(eid_value);
             reply = new_reply;
         }
     }
@@ -927,7 +933,9 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         closedir(dir);
         return;
     }
+    asprintf(&reply, "%s\n", reply);
     sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+    free(reply);
 
     closedir(dir);
     free(reservation_path);

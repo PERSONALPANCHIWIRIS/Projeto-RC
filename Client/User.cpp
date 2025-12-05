@@ -245,7 +245,11 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
                 cout << "->Error: incorrect time format" << endl;
                 return;
             }
-            if((value.size()!=3 || value.size()!=2 || value.size()!=1) || !verify_numeric(value)){
+            //Com a condição anterior dava sempre erro se o valor fosse 1 ou 2 dígitos
+            //Penso que o value aqui é assentos reservados, e não o numero de lugares em total
+            //Posso estar enganado
+            if ((value.size()<1 || value.size()>3) || !verify_numeric(value)){
+            //if((value.size()!=3 || value.size()!=2 || value.size()!=1) || !verify_numeric(value)){
                 cout << "->Error: incorrect value format" << endl;
                 return;
             }
