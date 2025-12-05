@@ -228,34 +228,28 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
         string events=response.substr(7);
         istringstream iss(events);
         string eid;
-        string time;
         string date;
         string value; // value between 1 and 999
-        while (iss >> eid >> date >> time >> value){
+        while (iss >> eid >> date >> value){
             //verificar se o EID a data e o tempo são válidos (format: dd-mm-yyyy hh:mm:ss)
             if(eid.size()!=3 || !verify_numeric(eid)){
                 cout << "->Error: incorrect EID format" << endl;
                 return;
             }
-            if(date.size()!=10 || date[2]!='-' || date[5]!='-'){
+            if(date.size()!=19 ||!isalnum(date[0]) || !isalnum(date[1]) || date[2]!='-' || !isalnum(date[3]) || !isalnum(date[4]) || date[5]!='-' || !isalnum(date[6]) || !isalnum(date[7]) || !isalnum(date[8]) || !isalnum(date[9]) || date[10]!=' ' || !isalnum(date[11]) || !isalnum(date[12]) || date[13]!=':' || !isalnum(date[14]) || !isalnum(date[15]) || date[16]!=':' || !isalnum(date[17]) || !isalnum(date[18])){
                 cout << "->Error: incorrect date format" << endl;
                 return;
             }
-            if(time.size()!=8 || time[2]!=':' || time[5]!=':'){
-                cout << "->Error: incorrect time format" << endl;
-                return;
-            }
             //Com a condição anterior dava sempre erro se o valor fosse 1 ou 2 dígitos
-            //Penso que o value aqui é assentos reservados, e não o numero de lugares em total
-            //Posso estar enganado
+            //if((value.size()!=3 || value.size()!=2 || value.size()!=1) || !verify_numeric(value))
+            //O value aqui é assentos reservados, e não o numero de lugares em total
             if ((value.size()<1 || value.size()>3) || !verify_numeric(value)){
-            //if((value.size()!=3 || value.size()!=2 || value.size()!=1) || !verify_numeric(value)){
                 cout << "->Error: incorrect value format" << endl;
                 return;
             }
             //imprimir o EID e o status
             cout << "->Event ID: " << eid;
-            cout << " Reservation Date: " << date << " Time: " << time << endl;
+            cout << " Reservation Date: " << date << endl;
             cout << " Reservation Value: " << value << endl;
         }
     }
@@ -263,12 +257,12 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
         cout << "->Error occurred!" << endl;
     }
 }
-
+//CRE UID password name event_date attendance_size Fname Fsize Fdata
 //CREATE(tcp, UID, password, name, event_date, attendance_size, asset), TCP
 void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     cout << "->creating event..." << endl;
     istringstream iss(inputs);
-    string command, name, asset,  event_date, attendance_size, fdata, fsize;
+    string command, name, event_date, attendance_size, asset, fsize, fdata;
     //verificar se os inputs são válidos
     iss >> command;
     iss >> name;
@@ -283,7 +277,7 @@ void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     }
     //event_date indicating the date and time (dd-mm-yyyy hh:mm) of the event
     iss >> event_date;
-    if(event_date.size()!=15 || !verify_date(event_date)){
+    if(event_date.size()!=16 || !verify_date(event_date)){
         cout << "->Error: incorrect event_date format" << endl;
         return;
     }
@@ -436,7 +430,7 @@ void list_cmd(string UID, TCPuser tcp){
                 return;
             }
             // verify date+time using verify_date (expects "dd-mm-yyyy hh:mm")
-            if(event_date.size()!=15 || !verify_date(event_date)){
+            if(event_date.size()!=16 || !verify_date(event_date)){
                 cout << "->Error: incorrect event_date format" << endl;
                 return;
             }
@@ -493,7 +487,7 @@ void show_cmd(TCPuser tcp, string inputs){
             cout << "->Error: file too big" << endl;
             return;
         }
-        else if (event_date.size()!=15 || !verify_date(event_date)){
+        else if (event_date.size()!=16 || !verify_date(event_date)){
             cout << "->Error: incorrect event_date format" << endl;
             return;
         }
@@ -752,7 +746,7 @@ int main(int argc, char *argv[]){
             command.clear();
         }
         //CHANGEPASS(tcp)
-        else if(command=="changepass" && logged_in==1){
+        else if(command=="changePass" && logged_in==1){
             string new_password;
             iss >> new_password;
             //verifica se a nova password é válida

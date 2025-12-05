@@ -59,23 +59,41 @@ int verify_numeric(string str){
 /*verify_date(string str)
 Verifica se uma string está no formato dd-mm-yyyy hh:mm*/
 int verify_date(string str){
-    if(str.size()!=15){
+    // check  size for "dd-mm-yyyy hh:mm" -> 16 chars
+    if(str.size() != 16) return 0;
+
+    // digits in their positions
+    if(!isalnum(str[0]) || !isalnum(str[1]) ||
+       !isalnum(str[3]) || !isalnum(str[4]) ||
+       !isalnum(str[6]) || !isalnum(str[7]) ||
+       !isalnum(str[8]) || !isalnum(str[9]) ||
+       !isalnum(str[11]) || !isalnum(str[12]) ||
+       !isalnum(str[14]) || !isalnum(str[15])) {
         return 0;
     }
-    //verificar dd-mm-yyyy hh:mm
-    if(!isdigit(str[0]) || !isdigit(str[1]) || str[2]!='-' || !isdigit(str[3]) || !isdigit(str[4]) || str[5]!='-' || !isdigit(str[6]) || !isdigit(str[7]) || !isdigit(str[8]) || !isdigit(str[9]) || str[10]!=' ' || !isdigit(str[11]) || !isdigit(str[12]) || str[13]!=':' || !isdigit(str[14]) || !isdigit(str[15])){
+
+    // separators at fixed positions
+    if(str[2] != '-' || str[5] != '-' || str[10] != ' ' || str[13] != ':') return 0;
+
+    // parse numeric fields (safe because we checked digits)
+    int day = stoi(str.substr(0,2));
+    int month = stoi(str.substr(3,2));
+    int year = stoi(str.substr(6,4));
+    int hour = stoi(str.substr(11,2));
+    int minute = stoi(str.substr(14,2));
+
+    if(year < 1 || month < 1 || month > 12 || hour < 0 || hour > 23 || minute < 0 || minute > 59)
         return 0;
+
+    int mdays = 31;
+    if(month == 4 || month == 6 || month == 9 || month == 11) mdays = 30;
+    else if(month == 2){
+        bool leap = ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0));
+        mdays = leap ? 29 : 28;
     }
-    //verificar dd-mm-yyyy hh:mm
-    int day=stoi(str.substr(0,2));
-    int month=stoi(str.substr(3,2));
-    int year=stoi(str.substr(6,4));
-    int hour=stoi(str.substr(11,2));
-    int minute=stoi(str.substr(14,2));
-    //if day month year hour minute is valid return 0
-    if(day<1 || day>31 || month<1 || month>12 || year<1 || hour<0 || hour>23 || minute<0 || minute>59){
-        return 0;
-    }
+
+    if(day < 1 || day > mdays) return 0;
+
     return 1;
 }
 
