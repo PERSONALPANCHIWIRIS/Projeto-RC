@@ -222,6 +222,12 @@ void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, 
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
+
+    if (!pass_is_valid(password)){
+        char* reply = "RLI WRP\n"; //Password inválida
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        return;
+    }
     
     //Tira o path para a diretoria do ususario
     char* user_path = NULL;
@@ -276,7 +282,7 @@ void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, 
             return;
         } 
         else {
-            char* reply = "RLI WRP\n"; //Password incorreta
+            char* reply = "RLI NOK\n"; //Password incorreta
             sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
             free(user_path);
             return;
@@ -297,6 +303,12 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     if (!uid_is_valid(uid)){
         //printf("DEBUG 1\n");
         char* reply = "RLO NOK\n"; //UID inválido
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        return;
+    }
+
+    if (!pass_is_valid(password)){
+        char* reply = "RLI WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
@@ -370,6 +382,12 @@ void unregister_user(const char *buffer, int udp_fd, struct sockaddr_in client_a
 
     if (!uid_is_valid(uid)){
         char* reply = "RUR NOK\n"; //UID inválido
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        return;
+    }
+
+    if (!pass_is_valid(password)){
+        char* reply = "RLI WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
@@ -447,6 +465,12 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
 
     if (!uid_is_valid(uid)){
         char* reply = "RME NOK\n"; //UID inválido
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        return;
+    }
+
+    if (!pass_is_valid(password)){
+        char* reply = "RLI WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
@@ -602,6 +626,11 @@ bool uid_is_valid(const char *uid){
     }//É numerico
 
     return strlen(uid) == 6; //Deve ser de 6 digitos
+}
+
+bool pass_is_valid(const char *password){
+    //Verifica se a password é valida
+    return strlen(password) == 8;
 }
 
 void status_events(struct event_list *events, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len){
@@ -784,6 +813,12 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         return;
     }
 
+    if (!pass_is_valid(password)){
+        char* reply = "RLI WRP\n"; //Password inválida
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        return;
+    }
+
     char *user_path = NULL;
     asprintf(&user_path, "USERS/%s", uid);
     if (!dir_exists(user_path)){
@@ -835,7 +870,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
 
     char *reply = NULL;
     asprintf(&reply, "RMR OK\n");
-    while ((entry = readdir(dir)) != NULL) {
+    while ((entry = readdir(dir)) != NULL && (n_entries <= 50)) {
         //Ignorar . e ..
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;

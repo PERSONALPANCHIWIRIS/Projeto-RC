@@ -1,0 +1,33 @@
+----------------------------------------------- Documento com todas as duvidas e respostas até a data--------------------------------------------------
+
+ -- Nos ficheiro do tipo R-uid-date-hour, que tipo de informação pode ser colocada? Facilitava muito que fosse a igual
+ à informação que está nos ficheiros R.txt.
+
+Resposta do professor: Na nossa guia, o ficheiro deve conter o seguinte: UID, res_num, res_datetime. è importante notar,
+no entanto, que isto é apenas uma sugestão. Pode inserir as informações da forma que preferir.
+
+-- No enunciado "RC_Guia_ES_2025" diz "res_datetime é a data da reserva em causa no formato DD-MM-YYYY HH:MM:SS" e fala
+de comparar os pedidos de dois users ao mesmo tempo para calcular o que guardar no ficheiro. A minha duvidaé em relação
+ao formato normal no resto do projeto seria DD-MM-YYYY HH:MM e todas as verificações saõ feitas com isso em mente
+(a pergunta seria se no lado do servidor quando usamos a biblioteca time se temos de usar os segundos também, e se sim,
+até que momento da verificação é que se deve ter em conta os segundos).
+
+Resposta do professor: Neste caso específico, precisa de incluir os segundos. Isto aplica-se ao momento em que o 
+utilizador fez a reserva. 
+Nos restantes casos, como o horário do evento, incluir apenas os minutos.
+
+-- Em relação ao user, a quando eu o testar encontrei duvidas sobre as regras para verificar o fnmae em comandos como o
+create (não encontrei nada como dizer que tem de ser alfanumerico ou se tem de ser na forma .txt o que implica ver todos
+os elementos até ao "." e depois a extensão)
+
+Resposta do professor: Estas informações também estão incluidas na guia (fim da pagina 11).
+
+-- Sobre o comando login, caso o formato da password seja o correto, no entanto, a password em si própria estiver errada
+(não é a registada pelo user), podemos adicionar um caso em que a mensagem enviada para o client é RLI WRG?
+
+Resposta do professor: Nesse caso a resposta é RLI NOK. Não convém adicionarem casos além dos definidos no enunciado.
+
+-- Serão disponibilizados ficheiros de teste ou exemplo para testar a fundo o cliente?
+
+Resposta do professor: Ficheiros e casos de exemplo serão dados, em principio, no final desta semana (5/12/2025) 
+para testarem o server. No caso do cliente, devem testar sempre ligando-se ao tejo.ulisboa.pt
