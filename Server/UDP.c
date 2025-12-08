@@ -134,8 +134,13 @@ void handle_udp(int udp_fd) {
         }
 
         else{
-            char* reply = "[UDP] Unknown command: %s\n", command;
+            //char* reply = NULL; 
+            //asprintf(&reply, "[UDP] Unknown command: %s\n", command);
+            int needed = snprintf(NULL, 0, "[UDP] Unknown command: %s\n", command);
+            char *reply = malloc(needed + 1);
+            snprintf(reply, needed + 1, "[UDP] Unknown command: %s\n", command);
             sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+            free(reply);
         }
 }
 
