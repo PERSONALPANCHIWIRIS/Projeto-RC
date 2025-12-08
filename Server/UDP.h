@@ -48,3 +48,5 @@ bool check_event_date(int day, int month, int year, int hour, int minute);
 void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len);
 bool path_exists(const char *path);
 bool pass_is_valid(const char *password);
+bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t client_len, const char *uid,
+     const char *password, const char *user_path, char *reply);

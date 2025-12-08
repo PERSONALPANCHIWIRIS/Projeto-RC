@@ -1,205 +1,4 @@
-#include "udp_not_tested.h"
 
-int main(int argc, char *argv[]) {
-    int ESport = base_ESport; //Valor por defeito
-
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-p") == 0 && i + 1 < argc) {
-            ESport = atoi(argv[i + 1]);
-        }
-    }
-
-    if (strcmp(argv[argc - 1], "-v") == 0) {
-        verbose = true;
-        printf("Verbose mode enabled\n");
-    }
-
-    printf("ES booted with port: %d\n", ESport);
-
-    //Criamos os sockets
-    //UDP - Sock_dgram
-    int udp_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (udp_fd < 0) { 
-        perror("UDP socket"); exit(1);
-    }
-
-    //TCP - Sock_stream
-    int tcp_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (tcp_fd < 0) {
-        perror("TCP socket"); exit(1);
-    }
-
-    //Address para bind
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_port = htons(ESport); //A qual socket vão as conexoes
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    
-    //Bind UDP
-    if (bind(udp_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) { //Casting para sockaddr
-        perror("bind UDP");
-        exit(1);
-    }
-
-    //Bind TCP
-    if (bind(tcp_fd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        perror("bind TCP");
-        exit(1);
-    }
-
-    //TCP Listen
-    if (listen(tcp_fd, 10) < 0) { //Backlog - fila de espera - de 10
-        perror("listen");
-        exit(1);
-    }
-
-    fd_set all_sets; //Set de file descriptors
-    //Encontramos o maximo de forma ao select abranger todos os fds possiveis
-    int max_fd = (udp_fd > tcp_fd ? udp_fd : tcp_fd);
-
-    while (1) {
-        FD_ZERO(&all_sets); //Limpar set
-        FD_SET(udp_fd, &all_sets); //Adicionar UDP
-        FD_SET(tcp_fd, &all_sets); //Adicionar TCP
-
-        //Vamos, ao inicio, só ler dos sockets
-        int ready = select(max_fd + 1, &all_sets, NULL, NULL, NULL);
-        if (ready < 0) {
-            perror("select"); continue;
-        }
-
-        if (FD_ISSET(udp_fd, &all_sets)) { //Se UDP está pronto
-            handle_udp(udp_fd);
-        }
-
-        if (FD_ISSET(tcp_fd, &all_sets)) { //Se TCP está pronto
-            handle_tcp(tcp_fd);
-        }
-    }
-
-    close(udp_fd);
-    close(tcp_fd);
-    return 0;
-}
-
-//Tratar da mensagem recebida UDP
-void handle_udp(int udp_fd) {
-    char buffer[MAX_BUFFER];
-    memset(buffer, 0, MAX_BUFFER);
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-
-    int n = recvfrom(udp_fd, buffer, MAX_BUFFER - 1, 0,
-                     (struct sockaddr*)&client_addr, &client_len);
-
-    if (n < 0) {
-        perror("recvfrom - UDP");
-        return;
-    }
-    buffer[n] = '\0'; //recvfrom lê tudo de uma vez
-    
-    //IP e port do client.
-    if (verbose) printf("[UDP] Received: %s, IP: %s\n, Port: %d\n", buffer, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-
-    char command[4];
-    sscanf(buffer, "%3s", command);
-
-        if (strcmp(command, "LIN") == 0) {
-            //if (verbose) printf("[UDP] Received: %s", buffer);
-            //chamar função login
-            login_user(buffer, udp_fd, client_addr, client_len);
-        }
-
-        else if (strcmp(command, "LOU") == 0) {
-            //chamar função logout
-            //No lado do user já verifica se está logged in
-            logout_user(buffer, udp_fd, client_addr, client_len);
-        }
-
-        else if (strcmp(command, "UNR") == 0) {
-            //chamar função unregister
-            unregister_user(buffer, udp_fd, client_addr, client_len);
-        }
-
-        else if (strcmp(command, "LME") == 0) {
-            //chamar função myevents
-            list_events(buffer, udp_fd, client_addr, client_len);
-        }
-
-        else if (strcmp(command, "LMR") == 0) {
-            //chamar função myreservations
-            list_reservations(buffer, udp_fd, client_addr, client_len);
-        }
-
-        else{
-            char* reply = "[UDP] Unknown command: %s\n", command;
-            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-        }
-}
-
-//Tratar do TCP
-void handle_tcp(int tcp_fd) {
-    struct sockaddr_in client_addr;
-    socklen_t client_len = sizeof(client_addr);
-
-    int connect_fd = accept(tcp_fd, (struct sockaddr*)&client_addr, &client_len);
-    if (connect_fd < 0) return;
-
-    char line[MAX_COMMAND];
-    ssize_t n = read_line(connect_fd, line, sizeof(line));
-
-    if (n <= 0) {
-        close(connect_fd);
-        return;
-    }
-
-    if (verbose) printf("[TCP] Received: %s", line);
-
-    //Parse da linah
-    parse_tcp_command(line, connect_fd);
-
-    close(connect_fd);
-
-    // CRE -> create event
-    // CLS -> close
-    // LST -> list
-    // SED -> show event
-    // RID -> reserve
-    // CPS -> changePassword
-
-    //sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-}
-
-ssize_t read_line(int fd, char *buffer, size_t maxlen) {
-    size_t total = 0;
-
-    while (total < maxlen - 1) {
-        char c;
-        ssize_t n = read(fd, &c, 1);
-
-        if (n <= 0) {  //erro ou desligaram
-            return -1;
-        }
-
-        buffer[total] = c;
-        total++;
-
-        if (c == '\n'){
-            break;
-        }
-    }
-
-    buffer[total] = '\0';
-    return total;
-}
-
-void parse_tcp_command(const char *line, int connect_fd) {
-    //Le o comando, e executa a ação correspondente
-    //Deve utilizar read, write
-    //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções especificas para cada caso
-    //Se está no modo verbose, pritar sempre o que está a ser executado
-}
 
 bool dir_exists(const char *path) {
     struct stat st;
@@ -308,70 +107,30 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     }
 
     if (!pass_is_valid(password)){
-        char* reply = "RLI WRP\n"; //Password inválida
+        char* reply = "RLO WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
+    char *reply;
+    asprintf(&reply, "RLO "); //Resposta base
     
     char* user_path = NULL;
     asprintf(&user_path, "USERS/%s", uid);
-
-    if (dir_exists(user_path)){
-        //Verificar se esta logged in
+    if (!standard_checks(udp_fd, client_addr, client_len, uid, password, user_path, reply)){
+        free(user_path);
+        free(reply);
+        return;
+    }
+    else{
+        //Tudo ok
         char* login_path = NULL;
         asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
-
-        if (path_exists(login_path)) {
-            char* pass_path = NULL;
-            asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
-
-            FILE *f = fopen(pass_path, "r");
-            if (f == NULL) {
-                char* reply = "RLO NOK\n"; //Erro ao abrir ficheiro
-                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-                free(login_path);
-                free(user_path);
-                free(pass_path);
-                fclose(f); 
-                return; 
-            }
-            char stored_password[100];
-            fscanf(f, "%s", stored_password);
-            fclose(f);
-            free(pass_path);
-
-            if (strcmp(stored_password, password) == 0) {
-                //Remover o ficheiro de login
-                //remove(login_path);
-                unlink(login_path);
-                char* reply = "RLO OK\n"; //Logout com sucesso
-                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
-                free(login_path);
-                free(user_path);
-                return;
-            } 
-            else {
-                char* reply = "RLO WRP\n"; //Password incorreta
-                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-                free(login_path);
-                free(user_path);
-                return;
-            }
-        } 
-        else {
-            //printf("DEBUG 2\n");
-            char* reply = "RLO NOK\n"; //Não está logged in
-            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-            free(login_path);
-            free(user_path);
-            return;
-        }
-    }
-
-    else{//Usuario nunca foi registado 
-        char* reply = "RLO UNR\n"; 
-        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        unlink(login_path);
+        asprintf(&reply, "RLO OK\n"); //Logout com sucesso
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
+        free(login_path);
         free(user_path);
+        free(reply);
         return;
     }
 }
@@ -387,74 +146,35 @@ void unregister_user(const char *buffer, int udp_fd, struct sockaddr_in client_a
     }
 
     if (!pass_is_valid(password)){
-        char* reply = "RLI WRP\n"; //Password inválida
+        char* reply = "RUR WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
+    char *reply;
+    asprintf(&reply, "RUR "); //Resposta base
     
     char* user_path = NULL;
     asprintf(&user_path, "USERS/%s", uid);
 
-    if (dir_exists(user_path)){//Registado
+    if (!standard_checks(udp_fd, client_addr, client_len, uid, password, user_path, reply)){
+        free(user_path);
+        free(reply);
+        return;
+    }
+    else{
+        //Tudo ok
         char* login_path = NULL;
         asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
-
-        if (path_exists(login_path)){//Logged in
-            char* pass_path = NULL;
-            asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
-            FILE *f = fopen(pass_path, "r");
-
-            if (f == NULL) {
-                char* reply = "RUR NOK\n"; //Erro ao abrir ficheiro
-                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-                free(login_path);
-                free(user_path);
-                free(pass_path);
-                fclose(f); 
-                return;
-            }
-            char stored_password[100];
-            fscanf(f, "%s", stored_password);
-            fclose(f);
-            //free(pass_path);
-
-            if (strcmp(stored_password, password) == 0) {
-                //Remover SÓ login.txt e pass.txt
-                char command[1500];
-                unlink(login_path);
-                unlink(pass_path);
-
-                char* reply = "RUR OK\n"; //Unregister com sucesso
-                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
-                free(login_path);
-                free(user_path);
-                free(pass_path);
-                return;
-            }
-
-            else { //Password incorreta
-                char* reply = "RUR WRP\n"; 
-                sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-                free(login_path);
-                free(user_path);
-                free(pass_path);
-                return;
-            }
-        }
-
-        else { //Não estava logged in
-            char* reply = "RUR NOK\n"; 
-            sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-            free(user_path);
-            free(login_path);
-            return;
-        }
-    }
-
-    else{//Usuario nunca foi registado 
-        char* reply = "RUR UNR\n"; 
-        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
+        char* pass_path = NULL;
+        asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
+        unlink(login_path);
+        unlink(pass_path);
+        asprintf(&reply, "RUR OK\n"); //Unregister com sucesso
+        sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
+        free(login_path);
         free(user_path);
+        free(pass_path);
+        free(reply);
         return;
     }
 }
@@ -470,7 +190,7 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     }
 
     if (!pass_is_valid(password)){
-        char* reply = "RLI WRP\n"; //Password inválida
+        char* reply = "RME WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
@@ -539,8 +259,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
 
         char* event_path = NULL;
         asprintf(&event_path, "EVENTS/%s", eid);
-        //printf("DEBUG: Event Path: %s\n", event_path);
-
 
         //Adicionar à lista
         struct event_list *new_event = malloc(sizeof(struct event_list));
@@ -562,8 +280,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         free(event_path);
         
     }
-    //printf("TUDO ESTA NA LINKED LIST\n");
-    //printf("DEBUG: Number of created events: %d\n", n_entries);
     closedir(dir);
 
     if (n_entries <= 0){
@@ -648,11 +364,9 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
         }
         char *end_path = NULL;
         asprintf(&end_path, "%s/END_%s.txt", current->event_path, current->eid);
-        //printf("DEBUG: End Path: %s\n", end_path); 
         if (path_exists(end_path)) {
             //Evento fechado
             asprintf(&reply, "%s%s 3 ", reply, current->eid);
-            //strcat(reply, "%s 3 ", current->eid);
             free(end_path);
             current = current->next;
             continue; 
@@ -661,20 +375,16 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
 
         char *start_path = NULL;
         asprintf(&start_path, "%s/START_%s.txt", current->event_path, current->eid);
-        //printf("DEBUG: Start Path: %s\n", start_path);
         FILE *fstart = fopen(start_path, "r");
         char *start_content = NULL;
-        //printf("DEBUG: Before reading start content\n");
 
         fseek(fstart, 0, SEEK_END);
         long size = ftell(fstart);
         rewind(fstart);
 
         start_content = malloc(size + 1);
-        //fprintf(fstart, "%s", start_content);
         fread(start_content, 1, size, fstart);
         start_content[size] = '\0';
-        //printf("DEBUG: Imed after reading start content\n");
         fclose(fstart);
         free(start_path);
 
@@ -682,9 +392,7 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
         int event_attend;
         int start_day, start_month, start_year;
         int start_hour, start_minute;
-        //printf("DEBUG: Start Content: %s\n", start_content);
         parse_start_content(start_content, &event_attend, &start_day, &start_month, &start_year, &start_hour, &start_minute);
-        //printf("POST PARSE\n");
         free(start_content);
         if (check_event_date(start_day, start_month, start_year, start_hour, start_minute)) {
             //Evento futuro
@@ -705,14 +413,12 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             if (n_reservations >= event_attend) {
                 //Evento cheio
                 asprintf(&reply, "%s%s 2 ", reply, current->eid);
-                //strcat(reply, "%s 2 ", current->eid);
                 current = current->next;
                 continue;
             }
             else {
                 //Evento com vagas
                 asprintf(&reply, "%s%s 1 ", reply, current->eid);
-                //strcat(reply, "%s 1 ", current->eid);
                 current = current->next;
                 continue;
             }
@@ -720,15 +426,12 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
         else {
             //Evento passado
             asprintf(&reply, "%s%s 0 ", reply, current->eid);
-            //strcat(reply, "%s 0 ", current->eid);
             current = current->next;
             continue;
         }
-        //current = current->next;
     }
     asprintf(&reply, "%s\n", reply);
     sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
-    //printf("Sent reply: %s", reply);
     free(reply);
 
     //Libertar a lista
@@ -817,7 +520,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
     }
 
     if (!pass_is_valid(password)){
-        char* reply = "RLI WRP\n"; //Password inválida
+        char* reply = "RMR WRP\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
@@ -895,7 +598,6 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
             free(file_path);
             continue;
         }
-        //printf("DEBUG: Reservation line: %s\n", line);
 
         fclose(fres);
         free(file_path);
@@ -905,7 +607,7 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         int day, month, year;
         int hour, minute, second;
 
-        // EID num_reserved_seats DD-MM-YYYY HH:MM
+        // EID num_reserved_seats DD-MM-YYYY HH:MM:SS
         ///////////////A ideia aqui é que, na altura da reserva, guardamos no r-uid-date.txt esta informação toda
         ///////////////Em seats guardamos o numero de lugares que o user reservou
         if (sscanf(line, "%s %d %d-%d-%d %d:%d:%d",
@@ -924,7 +626,6 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
             reply = new_reply;
         }
     }
-    //sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
 
     if (n_entries <= 0){
         char* reply = "RMR NOK\n"; //Não existem reservas
@@ -939,4 +640,67 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
 
     closedir(dir);
     free(reservation_path);
+}
+
+bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t client_len, const char *uid,
+     const char *password, const char *user_path, char *reply){
+
+    if (dir_exists(user_path)){
+        //Verificar se esta logged in
+        char* login_path = NULL;
+        asprintf(&login_path, "%s/%s_login.txt", user_path, uid);
+
+        if (path_exists(login_path)) {
+            char* pass_path = NULL;
+            asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
+
+            FILE *f = fopen(pass_path, "r");
+            if (f == NULL) {
+                char *temp = NULL; 
+                asprintf(&temp, "%sNOK\n", reply); //Erro ao abrir ficheiro
+                sendto(udp_fd, temp, strlen(temp), 0, (struct sockaddr*)&client_addr, client_len);
+                free(temp);
+                free(login_path);
+                free(pass_path);
+                fclose(f); 
+                return false; 
+            }
+            char stored_password[100];
+            fscanf(f, "%s", stored_password);
+            fclose(f);
+            free(pass_path);
+
+            if (strcmp(stored_password, password) == 0) {
+                free(login_path);
+                return true;
+            } 
+
+            else {
+                char *temp = NULL;
+                asprintf(&temp, "%sWRP\n", reply); //Password errada
+                sendto(udp_fd, temp, strlen(temp), 0, (struct sockaddr*)&client_addr, client_len);
+                free(temp);
+                free(login_path);
+                return false;
+            }
+        } 
+        else {
+            char *temp = NULL;
+            asprintf(&temp, "%sNOK\n", reply); //Não está logged in
+            sendto(udp_fd, temp, strlen(temp), 0, (struct sockaddr*)&client_addr, client_len);
+            free(temp);
+            free(login_path);
+            return false;
+        }
+    }
+
+    else{//Usuario nunca foi registado 
+        char *temp = NULL;
+        asprintf(&temp, "%sUNR\n", reply); //Usuario não registado
+        sendto(udp_fd, temp, strlen(temp), 0, (struct sockaddr*)&client_addr, client_len);
+        free(temp);
+        return false;
+    }
+    
+    return true;
 }

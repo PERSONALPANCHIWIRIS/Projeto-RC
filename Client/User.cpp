@@ -229,14 +229,17 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
         istringstream iss(events);
         string eid;
         string date;
+        string time;
         string value; // value between 1 and 999
-        while (iss >> eid >> date >> value){
+        while (iss >> eid >> date >> time >> value){
             //verificar se o EID a data e o tempo são válidos (format: dd-mm-yyyy hh:mm:ss)
             if(eid.size()!=3 || !verify_numeric(eid)){
                 cout << "->Error: incorrect EID format" << endl;
                 return;
             }
-            if(date.size()!=19 ||!isalnum(date[0]) || !isalnum(date[1]) || date[2]!='-' || !isalnum(date[3]) || !isalnum(date[4]) || date[5]!='-' || !isalnum(date[6]) || !isalnum(date[7]) || !isalnum(date[8]) || !isalnum(date[9]) || date[10]!=' ' || !isalnum(date[11]) || !isalnum(date[12]) || date[13]!=':' || !isalnum(date[14]) || !isalnum(date[15]) || date[16]!=':' || !isalnum(date[17]) || !isalnum(date[18])){
+            //if(date.size()!=19 ||!isalnum(date[0]) || !isalnum(date[1]) || date[2]!='-' || !isalnum(date[3]) || !isalnum(date[4]) || date[5]!='-' || !isalnum(date[6]) || !isalnum(date[7]) || !isalnum(date[8]) || !isalnum(date[9]) || date[10]!=' ' || !isalnum(date[11]) || !isalnum(date[12]) || date[13]!=':' || !isalnum(date[14]) || !isalnum(date[15]) || date[16]!=':' || !isalnum(date[17]) || !isalnum(date[18])){
+            //Antes 'date' estava a guardar só os dias e não a hora de reserva
+            if(date.size() !=10 ||!isalnum(date[0]) || !isalnum(date[1]) || date[2]!='-' || !isalnum(date[3]) || !isalnum(date[4]) || date[5]!='-' || !isalnum(date[6]) || !isalnum(date[7]) || !isalnum(date[8]) || !isalnum(date[9]) || time.size()!=8 || !isalnum(time[0]) || !isalnum(time[1]) || time[2]!=':' || !isalnum(time[3]) || !isalnum(time[4]) || time[5]!=':' || !isalnum(time[6]) || !isalnum(time[7])){
                 cout << "->Error: incorrect date format" << endl;
                 return;
             }
@@ -249,7 +252,7 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
             }
             //imprimir o EID e o status
             cout << "->Event ID: " << eid;
-            cout << " Reservation Date: " << date << endl;
+            cout << " Reservation Date: " << date << " " << time << endl;
             cout << " Reservation Value: " << value << endl;
         }
     }
