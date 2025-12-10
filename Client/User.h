@@ -57,7 +57,7 @@ int verify_numeric(string str){
     return 1;
 }
 /*verify_date(string str)
-Verifica se uma string está no formato dd-mm-yyyy hh:mm*/
+Verifica se uma string está no formato dd-mm-yyyy hh:mm   FIX ME IF NEEDED: verify_date(const const char* date)*/
 int verify_date(string str){
     // check  size for "dd-mm-yyyy hh:mm" -> 16 chars
     if(str.size() != 16) return 0;
