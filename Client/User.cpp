@@ -456,7 +456,7 @@ void list_cmd(string UID, TCPuser tcp){
 void show_cmd(TCPuser tcp, string inputs){
     cout << "->show..." << endl;
     istringstream iss(inputs);
-    string command, EID, fname, fsize, rest;
+    string command, EID, owner, name, event_date, attendance, reserved, fname, fsize, rest;
     iss >> command >> EID;
     if(EID.size()!=3 || !verify_numeric(EID)){
         cout << "->Error: incorrect EID format" << endl;
@@ -475,7 +475,6 @@ void show_cmd(TCPuser tcp, string inputs){
     else if(response.substr(0,6)=="RSE OK"){
         string inputs = response.substr(7);
         istringstream iss(inputs);
-        string owner, name, event_date, attendance, reserved, fname, fsize, rest;
         iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize >> rest;
 
         if(fname.size()>24 || !verify_filename(fname)){
