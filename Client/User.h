@@ -59,30 +59,28 @@ int verify_numeric(string str){
 /*verify_date(string str)
 Verifica se uma string está no formato dd-mm-yyyy hh:mm   FIX ME IF NEEDED: verify_date(const const char* date)*/
 int verify_date(string str){
-    // check  size for "dd-mm-yyyy hh:mm" -> 16 chars
-    if(str.size() != 16) return 0;
+    // check  size for "dd-mm-yyyy" -> 10 chars
+    if(str.size() != 10) return 0;
 
     // digits in their positions
     if(!isdigit(str[0]) || !isdigit(str[1]) ||
        !isdigit(str[3]) || !isdigit(str[4]) ||
        !isdigit(str[6]) || !isdigit(str[7]) ||
-       !isdigit(str[8]) || !isdigit(str[9]) ||
-       !isdigit(str[11]) || !isdigit(str[12]) ||
-       !isdigit(str[14]) || !isdigit(str[15])) {
+       !isdigit(str[8]) || !isdigit(str[9])) {
         return 0;
     }
 
     // separators at fixed positions
-    if(str[2] != '-' || str[5] != '-' || str[10] != ' ' || str[13] != ':') return 0;
+    if(str[2] != '-' || str[5] != '-') return 0;
 
     // parse numeric fields (safe because we checked digits)
     int day = stoi(str.substr(0,2));
     int month = stoi(str.substr(3,2));
     int year = stoi(str.substr(6,4));
-    int hour = stoi(str.substr(11,2));
-    int minute = stoi(str.substr(14,2));
+    //int hour = stoi(str.substr(11,2));
+    //int minute = stoi(str.substr(14,2));
 
-    if(year < 1 || month < 1 || month > 12 || hour < 0 || hour > 23 || minute < 0 || minute > 59)
+    if(year < 1 || month < 1 || month > 12 /*|| hour < 0 || hour > 23 || minute < 0 || minute > 59*/)
         return 0;
 
     int mdays = 31;
@@ -475,6 +473,86 @@ public:
         cout << "->TCP connection established!" << std::endl;
         close(fd);
         return command;
+    }
+
+    string receive_message_list(string message){
+        string comd="";
+
+        //Criação do socket TCP
+        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd < 0) {
+            cout << "->Error creating socket" << std::endl;
+            return "error";
+        }
+
+        struct addrinfo hints, *res;
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_INET;          //IPv4
+        hints.ai_socktype = SOCK_STREAM;    //TCP socket
+
+        //Obtenção de informação sobre o servidor destino
+        int errcode = getaddrinfo(host.c_str(), to_string(port).c_str(), &hints, &res);
+        if (errcode != 0) {
+            cout << "->Error getting address info: " << gai_strerror(errcode) << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        //Conexão ao servidor destino
+        int n = connect(fd, res->ai_addr, res->ai_addrlen);
+        if (n == -1) {
+            cout << "->Error connecting to server" << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        struct timeval tv;
+        tv.tv_sec = 5; // 5 seconds
+        tv.tv_usec = 0;
+
+        if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))<0) {
+            cout << "->Error setting timeout" << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        //Envio de mensagem para o servidor destino
+        int w_n = send(fd, message.c_str(), message.size(), 0);
+        //Verificação de erros no envio de mensagem
+        if (w_n == -1) {
+            cout << "->Error sending message" << std::endl;
+            close(fd);
+            return "error";
+        }
+        //Aquele buffer gigante
+        char buffer[4000];
+        //Receção de mensagem do servidor destino
+        while(comd.find("\n")==string::npos){ //lê enquanto não encontrar o fim de mensagem \n
+            //Receção de mensagem do servidor destino
+            memset(buffer, 0, 4000);
+            int r_n = recv(fd, buffer, 4000, 0);
+            //Verificação de erros na receção de mensagem
+            if (r_n < 0) {
+                if(errno == EAGAIN || errno == EWOULDBLOCK){//Timeout atingido
+                    cout << "->Error: timeout" << endl;
+                    return "error";
+                }
+                cout << "->Error receiving message" << std::endl;
+                return "error";
+            }
+            //se a conexão for fechada pelo servidor sem enviar mensagem com \n
+            if(r_n==0){
+                cout << "->Error receiving message" << endl;
+                return "error";
+            }
+            for (int i = 0; i < r_n ; i++) {//lê apenas os caracteres recebidos(pode ser menos que 1024)
+                comd+=buffer[i];
+            }
+        }
+        // remover o texto recebido que não faz parte da resposta
+        ssize_t linepos = comd.find("\n");
+        string response = comd.substr(0, linepos + 1);
+        return response;
     }
 };
 

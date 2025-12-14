@@ -394,12 +394,14 @@ void close_cmd(string UID, string password,TCPuser tcp, string inputs){
 }
 
 //LIST(tcp), TCP
-void list_cmd(string UID, TCPuser tcp){
+//void list_cmd(string UID, TCPuser tcp){ //Isto para dar fix ao 'unuesed parameter UID' warning
+void list_cmd(TCPuser tcp){
     //mensagem a enviar ao servidor
     cout << "->list..." << endl;
     //mensagem a enviar ao servidor
     string message = "LST\n";
-    string response = tcp.connect_assets(message);
+    //string response = tcp.connect_assets(message);
+    string response = tcp.receive_message_list(message);
     //verificar se houve erro na conexão
     if(response=="error"){
         cout << "->Error connecting to server" << endl;
@@ -411,8 +413,8 @@ void list_cmd(string UID, TCPuser tcp){
     else if(response.substr(0,6)=="RLS OK"){
         string events = response.substr(7); 
         istringstream iss(events);
-        string eid, name, state, event_date;
-        while (iss >> eid >> name >> state >>  event_date){
+        string eid, name, state, event_date, event_hour;
+        while (iss >> eid >> name >> state >>  event_date >> event_hour){
             //verificar se o EID e o status são válidos
             if(eid.size() != 3 || !verify_numeric(eid)){
                 cout << "->Error: incorrect EID format" << endl;
@@ -432,14 +434,20 @@ void list_cmd(string UID, TCPuser tcp){
                 cout << "->Error: unknown state value" << endl;
                 return;
             }
-            // verify date+time using verify_date (expects "dd-mm-yyyy hh:mm")
-            if(event_date.size()!=16 || !verify_date(event_date)){
+            // verify date+time using verify_date (expects "dd-mm-yyyy")
+            if(event_date.size()!=10 || !verify_date(event_date)){
+                cout << eid << " " << name << " " << state << " " << event_date << " " << event_hour << endl;
                 cout << "->Error: incorrect event_date format" << endl;
+                return;
+            }
+            // verify time (expects "hh:mm")
+            if (event_hour.size()!=5 || !isalnum(event_hour[0]) || !isalnum(event_hour[1]) || event_hour[2]!=':' || !isalnum(event_hour[3]) || !isalnum(event_hour[4])){
+                cout << "->Error: incorrect event_hour format" << endl;
                 return;
             }
 
             // print result using the same style as original file
-            cout << "->Event ID: " << eid << " Name: " << name << " Date: " << event_date << endl;
+            cout << "->Event ID: " << eid << " Name: " << name << " Date: " << event_date << " " << event_hour << endl;
             if(state == "0") cout << " Past" << endl;
             else if(state == "1") cout << " Future - Open" << endl;
             else if(state == "2") cout << " Future - Sold-out" << endl;
@@ -778,7 +786,8 @@ int main(int argc, char *argv[]){
         
         //LIST(tcp)
         else if((command=="list" )){
-            list_cmd(UID, tcp);
+            //list_cmd(UID, tcp);
+            list_cmd(tcp);
             command.clear();
         }
         //SHOW(tcp)
