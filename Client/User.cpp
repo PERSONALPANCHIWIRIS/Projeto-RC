@@ -475,8 +475,8 @@ void show_cmd(TCPuser tcp, string inputs){
     else if(response.substr(0,6)=="RSE OK"){
         string inputs = response.substr(7);
         istringstream iss(inputs);
-        string owner, name, event_date, attendance, reserved, fname, fsize;
-        iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize;
+        string owner, name, event_date, attendance, reserved, fname, fsize, rest;
+        iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize >> rest;
 
         if(fname.size()>24 || !verify_filename(fname)){
             cout << "->Error: incorrect filename format" << endl;
@@ -502,8 +502,8 @@ void show_cmd(TCPuser tcp, string inputs){
             cout << "->Error: incorrect reserved format" << endl;
             return;
         }
-        //na directoria /SHOWN colocar o asset com
-        string filename = "Client/SHOWN/" + fname;
+        //na directoria /SHOW colocar o asset com
+        string filename = "Client/SHOW/" + fname;
         //apagar ficheiro se já existir (substiuição)
         remove(filename.c_str());
         //criar ficheiro
@@ -527,6 +527,8 @@ void show_cmd(TCPuser tcp, string inputs){
         cout << "->Attendance size: " << attendance << endl;
         cout << "->Seats reserved: " << reserved << endl;
         cout << "->File saved: " << filename << endl;
+        cout << "->File size: " << fsize << " bytes" << endl;
+        cout << "->File Content: " << rest << endl;
     }
     else{//RSE ERR
         cout << "->Error occurred!" << endl;
