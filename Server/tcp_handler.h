@@ -4,7 +4,9 @@
 #define UID_SIZE 6
 #define PWD_SIZE 8
 #define E_NAME_SIZE 10
-#define DATE_SIZE 16
+#define DATE_SIZE 16 // DD-MM-YYYY HH:MM
+#define P_DATE_SIZE 10 // DD-MM-YYYY
+#define TIME_SIZE 5 // HH:MM
 #define ATT_SIZE_STR 3 // max attendance size as string (max 3 digits)
 #define MIN_ATT 10
 #define MAX_ATT 999
@@ -17,21 +19,55 @@
 #define MAX_PP 999
 
 /**
+ * Aux function, create event directory
+ * Return: EID on success, 0 on failure
+ */
+int create_e_dir(void);
+
+/**
+ * Aux function, create event files (START and RES)
+ * @eid: EID
+ * @uid: UID of event creator
+ * @name: event name
+ * @fname: file name
+ * @att_size: attendance size
+ * @date: event date
+ * Return: 1 on success, 0 on failure
+ */
+int create_e_files(int eid, const char *uid, const char *name,
+                      const char *fname, int att_size, const char *date);
+
+/**
+ * Aux function, create event closure file (END)
+ * @eid: EID
+ * Return: 1 on success, 0 on failure
+ */                      
+int create_cls_file(const char *eid_str);
+
+/**
+ * Aux function, get event status
+ * @date: event date
+ * @eid_str: EID string
+ * Return: 1 if future and not sold_out, 0 if past, 2 if future and sold_out, 3 if closed by UID, -1 on failure
+ */
+int get_status(const char *date, const char *eid_str);
+
+/**
+ * Aux function, change user password
+ * @uid: UID
+ * @new_pwd: new password
+ * Return: 1 on success, 0 on failure
+ */
+int change_pwd(const char *uid, const char *new_pwd);
+                      
+/**
  * Sends appropriate reply to client
  * @connect_fd: TCP socket to send reply
  * @cmd: command string (3 letters)
  * @status: status string ("OK", "NOK", etc.)
  * @args: additional arguments (optional)
  */
-void client_reply(int connect_fd, const char *cmd, const char *status, const char *args) {
-    char reply[1024];
-    if (args) {
-        snprintf(reply, sizeof(reply), "R%s %s %s\n", cmd, status, args);
-    } else {
-        snprintf(reply, sizeof(reply), "R%s %s\n", cmd, status);
-    }
-    write(connect_fd, reply, strlen(reply));
-}
+void client_reply(int connect_fd, const char *cmd, const char *status, const char *args);
 
 /**
  * Aux function, check if UID is valid
@@ -44,7 +80,7 @@ int check_uid(const char *uid);
  * Aux function, check if password is correct for given UID
  * @uid: UID
  * @pwd: password
- * Return: 1 if correct, 0 if incorrect, -1 if not correct pwd
+ * Return: 1 if correct, 0 if failure, -1 if not correct pwd
  */
 int check_pwd(const char *uid, const char *pwd);
 // Dependendo da implementação, data_base pode ser um ponteiro para a estrutura do utilizador
@@ -97,6 +133,28 @@ int check_eid(const char *eid_str);
  * Return: pp if valid, 0 if invalid
  */
 int check_pp(const char *pp_str);
+
+/**
+ * Aux function, check if user is owner of event
+ * @uid: UID
+ * @eid_str: EID string
+ * Return: 1 if owner, 0 if not owner
+ */
+int check_owner(const char *uid, const char *eid_str);
+
+/**
+ * Aux function, check if event is sold out
+ * @eid_str: EID string
+ * Return: number of available spots if not sold out, 0 if sold out, -1 on failure
+ */
+int check_sold_out(const char *eid_str);
+
+/**
+ * Aux function, check if event is closed
+ * @eid_str: EID string
+ * Return: 1 if not closed, 0 if closed
+ */
+int check_cls(const char *eid_str);
 
 /**
  * Handle the CRE command to create an event

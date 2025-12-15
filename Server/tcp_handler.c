@@ -1,5 +1,127 @@
 #include "tcp_handler.h"
 
+int create_e_dir(void) {
+    int eid = 0;
+    char eid_dirname[15];
+    char reserv_dirname[25];
+    char desc_dirname[25];
+    int ret;
+    
+    for (eid = 1; eid < 999; eid++) {
+        snprintf(eid_dirname, sizeof(eid_dirname), "EVENTS/%03d", eid);
+        if (access(eid_dirname, F_OK) == -1) {
+            break; // Diretoria não existe, podemos usar este EID
+        }
+    }
+    ret = mkdir(eid_dirname, 0700);
+    if (ret == -1)
+        return 0;
+    snprintf(reserv_dirname, sizeof(reserv_dirname), "EVENTS/%03d/RESERVATIONS", eid);
+    ret = mkdir(reserv_dirname, 0700);
+    if (ret == -1) {
+        rmdir(eid_dirname);
+        return 0;
+    }
+    snprintf(desc_dirname, sizeof(desc_dirname), "EVENTS/%03d/DESCRIPTIONS", eid);
+    ret = mkdir(desc_dirname, 0700);
+    if (ret == -1) {
+        rmdir(reserv_dirname);
+        rmdir(eid_dirname);
+        return 0;
+    }
+    return eid;
+}
+
+int create_e_files(int eid, const char *uid, const char *name,
+                      const char *fname, int att_size, const char *date) {
+    char start_dirname[30];
+    char res_dirname[30];
+    FILE *fstart;
+    FILE *fres;
+    int res = 0;
+
+    snprintf(start_dirname, sizeof(start_dirname), "EVENTS/%03d/START_%03d.txt", eid, eid);
+    fstart = fopen(start_dirname, "w");
+    if (fstart == NULL)
+        return 0;
+    fprintf(fstart, "%s %s %s %d %s\n", uid, name, fname, att_size, date);
+    fclose(fstart);
+
+    snprintf(res_dirname, sizeof(res_dirname), "EVENTS/%03d/RES_%03d.txt", eid, eid);
+    fres = fopen(res_dirname, "w");
+    if (fres == NULL)
+        return 0;
+    fprintf(fres, "%d\n", res); // Inicialmente, 0 reservas
+    fclose(fres);
+
+    return 1;
+}
+
+int create_cls_file(const char *eid_str) {
+    char date[DATE_SIZE + 1];
+    char cls_dirname[30];
+    FILE *fcls;
+
+    // ADD: get current date and time in right format
+    // DD-MM-YYYY HH:MM
+
+    snprintf(cls_dirname, sizeof(cls_dirname), "EVENTS/%s/END_%s.txt", eid_str, eid_str);
+    fcls = fopen(cls_dirname, "w");
+    if (fcls == NULL)
+        return 0;
+    fprintf(fcls, "%s\n", date);
+    fclose(fcls);
+
+    return 1;
+}
+
+int get_status(const char *date, const char *eid_str) {
+    // Check if closed by UID
+    char end_dirname[30];
+
+    snprintf(end_dirname, sizeof(end_dirname), "EVENTS/%s/END_%s.txt", eid_str, eid_str);
+    if (dir_exists(end_dirname)) {
+        return 3; // Closed
+    }
+
+    // Check date
+    int day, month, year;
+    int hour, minute;
+    int avail = 0;
+
+    sscanf(date, "%d-%d-%d %d:%d", &day, &month, &year, &hour, &minute);
+    if (check_event_date(day, month, year, hour, minute)) {
+        // Future event
+        // Check if sold out
+        int avail = check_sold_out(eid_str);
+        if (avail == 1) {
+            return 1; // Future and not sold out
+        }
+        if (avail == 0) {
+            return 2; // Future and sold out
+        } 
+        if (avail == -1) {
+            return -1; // Error checking sold out status
+        }
+    } else {
+        return 0; // Evento passado
+    }
+}
+
+int change_pwd(const char *uid, const char *new_pwd) {
+    char pass_dirname[35];
+    FILE *f;
+
+    snprintf(pass_dirname, sizeof(pass_dirname), "USERS/%s/%s_pass.txt", uid, uid);
+    f = fopen(pass_dirname, "w");
+    if (f == NULL) {
+        return 0; // Could not open password file
+    }
+    fprintf(f, "%s\n", new_pwd);
+    fclose(f);
+    return 1;
+}
+
 void client_reply(int connect_fd, const char *cmd, const char *status, const char *args) {
     char reply[1024];
     if (args) {
@@ -11,27 +133,59 @@ void client_reply(int connect_fd, const char *cmd, const char *status, const cha
 }
 
 int check_uid(const char *uid) {
+    char uid_dirname[20];
+    char login_dirname[35];
+
     if (!uid) return 0;
     if (strnlen(uid) != UID_SIZE) return 0; // Acho que não é preciso
     for (size_t i = 0; i < UID_SIZE; i++) {
         if (!isdigit((unsigned char)uid[i])) return 0;
     }
-    // ADD: check if in database
-    // return -2;
-    // ADD: check if logged in
-    // return -1;
+
+    snprintf(uid_dirname, sizeof(uid_dirname), "USERS/%s", uid);
+    if (!dir_exists(uid_dirname)) {
+        return -2; // Not in database
+    }
+    snprintf(login_dirname, sizeof(login_dirname), "USERS/%s/%s_login.txt", uid, uid);
+    if (!dir_exists(login_dirname)) {
+        return -1; // Not logged in
+    }
 
     return 1;
 }
 
 int check_pwd(const char *uid, const char *pwd) {
+    char pass_dirname[35];
+    char u_pwd[PWD_SIZE + 1];
+    FILE *f;
+
     if (!uid || !pwd) return 0;
     if (strnlen(pwd) != PWD_SIZE) return 0; // Acho que não é preciso
     for (size_t i = 0; i < PWD_SIZE; i++) {
         if (!isalnum((unsigned char)pwd[i])) return 0;
     }
-    // ADD: if in database, check if password matches
-    // return -1;
+
+    snprintf(pass_dirname, sizeof(pass_dirname), "USERS/%s/%s_pass.txt", uid, uid);
+    if (!dir_exists(pass_dirname)) {
+        return 0; // Password file does not exist
+    }
+    f = fopen(pass_dirname, "r");
+    if (f == NULL) {
+        return 0; // Could not open password file
+    }
+    if (fgets(u_pwd, sizeof(u_pwd), f) == NULL) {
+        fclose(f);
+        return 0; // Could not read password
+    }
+    fclose(f);
+    // Remove newline character if present
+    size_t len = strnlen(u_pwd, PWD_SIZE + 1);
+    if (len > 0 && u_pwd[len - 1] == '\n') {
+        u_pwd[len - 1] = '\0';
+    }
+    if (strncmp(u_pwd, pwd, PWD_SIZE) != 0) {
+        return -1; // Password does not match
+    }
     return 1;
 }
 
@@ -91,13 +245,18 @@ int check_fsize(const char *fsize_str) {
 }
 
 int check_eid(const char *eid_str) {
+    char eid_dirname[15];
+
     if (!eid_str) return 0;
     if (strnlen(eid_str) != EID_SIZE) return 0;
     for (size_t i = 0; i < EID_SIZE; i++) {
         if (!isdigit((unsigned char)eid_str[i])) return 0;
     }
-    // ADD: check if EID exists in database
-    // return -1;
+
+    snprintf(eid_dirname, sizeof(eid_dirname), "EVENTS/%s", eid_str);
+    if (!dir_exists(eid_dirname)) {
+        return -1; // EID does not exist
+    }
     return 1;
 }
 
@@ -111,6 +270,74 @@ int check_pp(const char *pp_str) {
     int pp = atoi(pp_str);
     if (pp < MIN_PP || pp > MAX_PP) return 0; // Limite superior pode ser ajustado conforme necessário
     return pp;
+}
+
+int check_owner(const char *uid, const char *eid_str) {
+    char start_dirname[30];
+    FILE *fstart;
+    char owner_uid[UID_SIZE + 1];
+
+    snprintf(start_dirname, sizeof(start_dirname), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
+    fstart = fopen(start_dirname, "r");
+    if (fstart == NULL) {
+        return 0; // Could not open start file
+    }
+    if (fscanf(fstart, "%s", owner_uid) != 1) {
+        fclose(fstart);
+        return 0; // Could not read owner UID
+    }
+    fclose(fstart);
+
+    if (strncmp(owner_uid, uid, UID_SIZE) == 0) {
+        return 1; // Is owner
+    } else {
+        return 0; // Not owner
+    }
+}
+
+int check_sold_out(const char *eid_str) {
+    char start_dirname[30];
+    char res_dirname[30];
+    FILE *fstart;
+    FILE *fres;
+    int att_size = 0;
+    int current_res = 0;
+    int avail = 0;
+
+    snprintf(start_dirname, sizeof(start_dirname), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
+    fstart = fopen(start_dirname, "r");
+    if (fstart == NULL) {
+        return -1; // Could not open start file
+    }
+    // Skip owner UID, event name and file name
+    fscanf(fstart, "%*s %*s %*s %d", &att_size);
+    fclose(fstart);
+
+    snprintf(res_dirname, sizeof(res_dirname), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
+    fres = fopen(res_dirname, "r");
+    if (fres == NULL) {
+        return -1; // Could not open reservations file
+    }
+    fscanf(fres, "%d", &current_res);
+    fclose(fres);
+
+    if (current_res >= att_size) {
+        return 0; // Sold out
+    } else {
+        avail = att_size - current_res;
+        return avail; // Not sold out
+    }
+}
+
+int check_cls(const char *eid_str) {
+    char end_dirname[30];
+
+    snprintf(end_dirname, sizeof(end_dirname), "EVENTS/%s/END_%s.txt", eid_str, eid_str);
+    if (dir_exists(end_dirname)) {
+        return 0; // Event is closed
+    } else {
+        return 1; // Event is not closed
+    }
 }
 
 int handle_cre(const char *args, int connect_fd) {
@@ -237,7 +464,19 @@ int handle_cre(const char *args, int connect_fd) {
     // ADD: ler ficheiro de tamanho fsize
 
     // ADD: criar evento na base de dados
+    eid = create_e_dir();
+    if (eid == 0) {
+        client_reply(connect_fd, "RCE", "NOK", NULL);
+        return 0;
+    }
 
+    err = create_e_files(eid, uid, name, fname, att_size, date);
+    if (err == 0) {
+        client_reply(connect_fd, "RCE", "NOK", NULL);
+        return 0;
+    }
+
+    snprintf(eid_str, sizeof(eid_str), "%03d", eid);
     client_reply(connect_fd, "RCE", "OK", eid_str);
 
     return 1;
@@ -305,23 +544,37 @@ int handle_cls(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: check if user is owner of event
-    // client_reply(connect_fd, "RCL", "EOW", NULL); // Not owner
-    // return 0;
+    err = check_owner(uid, eid_str);
+    if (err == 0) {
+        client_reply(connect_fd, "RCL", "EOW", NULL); // Not owner
+        return 0;
+    }
 
-    // ADD: check if event is sold out
-    // client_reply(connect_fd, "RCL", "SLD", NULL); // Sold out
-    // return 0;
+    err = check_sold_out(eid_str);
+    if (err == -1) {
+        client_reply(connect_fd, "RCL", "NOK", NULL); // Failure
+        return 0;
+    }
+    if (err == 0) {
+        client_reply(connect_fd, "RCL", "SLD", NULL); // Sold out
+        return 0;
+    }
 
     // ADD: check if event is past
     // client_reply(connect_fd, "RCL", "PST", NULL); // Event past
     // return 0;
 
-    // ADD: check if already closed
-    // client_reply(connect_fd, "RCL", "CLO", NULL); // Already closed
-    // return 0;
+    err = check_cls(eid_str);
+    if (err == 0) {
+        client_reply(connect_fd, "RCL", "CLO", NULL); // Already closed
+        return 0;
+    }
 
-    // ADD: close event in database
+    err = create_cls_file(eid_str);
+    if (err == 0) {
+        client_reply(connect_fd, "RCL", "NOK", NULL); // Failure
+        return 0;
+    }
 
     client_reply(connect_fd, "RCL", "OK", NULL);
 
@@ -330,14 +583,70 @@ int handle_cls(const char *args, int connect_fd) {
 
 int handle_lst(const char *args, int connect_fd) {
     // Implement the logic for listing events
-
-    // ADD: check if there are any events to list
-    // client_reply(connect_fd, "RLS", "NOK", NULL);
-    // return 0;
-
+    int status = 0;
+    char state_str[2];
+    char name[E_NAME_SIZE + 1];
+    char full_date[DATE_SIZE + 1];
+    char date[P_DATE_SIZE + 1];
+    char time[TIME_SIZE + 1];
+    char eid_str[EID_SIZE + 1];
     char *event_list = NULL;
-    // ADD: populate event_list with events from database
-    // EID name state event_date (...) \n
+    char start_dirname[35];
+    FILE *fstart;
+    DIR *dir;
+    struct dirent *entry;
+    dir = opendir("EVENTS");
+
+    if (dir == NULL) {
+        client_reply(connect_fd, "RLS", "NOK", NULL);
+        return 0; // Could not open EVENTS directory
+    }
+
+    while((entry = readdir(dir)) != NULL) {
+        // Ignore . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        // Make file paths
+        strncpy(eid_str, entry->d_name, EID_SIZE);
+        eid_str[EID_SIZE] = '\0';
+        snprintf(start_dirname, sizeof(start_dirname), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
+        snprintf(res_dirname, sizeof(res_dirname), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
+
+        // Open START file
+        fstart = fopen(start_dirname, "r");
+        if (fstart == NULL) {
+            continue; // Could not open start file, skip this event
+        }
+        // Read event details
+        fscanf(fstart, "%*s %s %*s %*d %s %s", name, date, time);
+        fclose(fstart);
+        snprintf(full_date, sizeof(full_date), "%s %s", date, time);
+        
+        status = get_status(full_date, eid_str);
+        if (status == -1) {
+            continue; // Error getting status, skip this event
+        }
+
+        strncat(event_list, eid_str);
+        strncat(event_list, " ");
+        strncat(event_list, name);
+        strncat(event_list, " ");
+        snprintf(state_str, sizeof(state_str), "%d", status);
+        strncat(event_list, state_str);
+        strncat(event_list, " ");
+        strncat(event_list, full_date);
+        strncat(event_list, " ");
+    }
+
+    closedir(dir);
+    
+    if (event_list == NULL) {
+        client_reply(connect_fd, "RLS", "NOK", NULL);
+        return 0; // No events found
+    }
+
+    strncat(event_list, "\n");
 
     client_reply(connect_fd, "RLS", "OK", event_list);
 
@@ -355,7 +664,26 @@ int handle_sed(const char *args, int connect_fd) {
 
     int err = 0;
 
+    int att = 0;
+    int res = 0;
+    int fsize = 0;
+
     char eid_str[EID_SIZE + 1] = {0};
+    char uid[UID_SIZE + 1] = {0};
+    char name[E_NAME_SIZE + 1] = {0};
+    char date[DATE_SIZE + 1] = {0};
+    char att_str[ATT_SIZE_STR + 1] = {0};
+    char res_str[ATT_SIZE_STR + 1] = {0};
+    char fname[F_NAME_SIZE + 1];
+    char fsize_str[F_SIZE_STR + 1];
+    char fdata[F_SIZE + 1];
+    
+    char start_dirname[35];
+    char res_dirname[35];
+    char file_dirname[FILENAME_MAX + 30];
+    FILE *fstart;
+    FILE *fres;
+    FILE *ffile;
 
     char *file_data = NULL;
 
@@ -372,12 +700,72 @@ int handle_sed(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: check if there is a file
-    // client_reply(connect_fd, "RSE", "NOK", NULL);
-    // return 0;
+    // Read event details from START file
+    snprintf(start_dirname, sizeof(start_dirname), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
+    if (!dir_exists(start_dirname)) {
+        client_reply(connect_fd, "RSE", "NOK", NULL);
+        return 0;
+    }
+    fstart = fopen(start_dirname, "r");
+    if (fstart == NULL) {
+        client_reply(connect_fd, "RSE", "NOK", NULL);
+        return 0;
+    }
+    fscanf(fstart, "%s %s %s %d %s", uid, name, fname, &att, date);
+    fclose(fstart);
 
-    // ADD: populate file_data
-    // UID name event_date attendance_size Seats_reserved Fname Fsize Fdata
+    // Read current reservations from RES file
+    snprintf(res_dirname, sizeof(res_dirname), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
+    if (!dir_exists(res_dirname)) {
+        client_reply(connect_fd, "RSE", "NOK", NULL);
+        return 0;
+    }
+    fres = fopen(res_dirname, "r");
+    if (fres == NULL) {
+        client_reply(connect_fd, "RSE", "NOK", NULL);
+        return 0;
+    }
+    fscanf(fres, "%d", &res);
+    fclose(fres);
+    snprintf(att_str, sizeof(att_str), "%d", att);
+    snprintf(res_str, sizeof(res_str), "%d", res);
+
+    // Read event description file
+    snprintf(file_dirname, sizeof(file_dirname), "EVENTS/%s/DESCRIPTIONS/%s", eid_str, fname);
+    if (!dir_exists(file_dirname)) {
+        client_reply(connect_fd, "RSE", "NOK", NULL);
+        return 0;
+    }
+    ffile = fopen(file_dirname, "r");
+    if (ffile == NULL) {
+        client_reply(connect_fd, "RSE", "NOK", NULL);
+        return 0;
+    }
+    fseek(ffile, 0, SEEK_END);
+    fsize = ftell(ffile);
+    fseek(ffile, 0, SEEK_SET);
+    fread(fdata, 1, fsize, ffile);
+    fclose(ffile);
+    fdata[fsize] = '\0';
+    snprintf(fsize_str, sizeof(fsize_str), "%d", fsize);
+
+    strcat(file_data, uid);
+    strcat(file_data, " ");
+    strcat(file_data, name);
+    strcat(file_data, " ");
+    strcat(file_data, date);
+    strcat(file_data, " ");
+    strcat(file_data, att_str);
+    strcat(file_data, " ");
+    strcat(file_data, res_str);
+    strcat(file_data, " ");
+    strcat(file_data, fname);
+    strcat(file_data, " ");
+    strcat(file_data, fsize_str);
+    strcat(file_data, " ");
+    strcat(file_data, fdata);
+
+    // ADD: if expired, close event
 
     client_reply(connect_fd, "RSE", "OK", file_data);
 
@@ -401,6 +789,7 @@ int handle_rid(const char *args, int connect_fd) {
     char pp_str[PP_SIZE_STR + 1] = {0};
 
     int pp = 0;
+    int n_seats = 0;
 
     // Ler UID
     token = strtok_r(buf, " ", &saveptr);
@@ -453,16 +842,25 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: check if event is closed
-    // client_reply(connect_fd, "RRI", "CLS", NULL); // Closed
-    // return 0;
+    err = check_cls(eid_str);
+    if (err == 0) {
+        client_reply(connect_fd, "RRI", "CLS", NULL); // Closed
+        return 0;
+    }
 
-    // ADD: check if event is sold out
-    // client_reply(connect_fd, "RRI", "SLD", NULL); // Sold out
-    // return 0;
+    n_seats = check_sold_out(eid_str);
+    if (n_seats == -1) {
+        client_reply(connect_fd, "RRI", "NOK", NULL); // Failure
+        return 0;
+    }
+    if (n_seats == 0) {
+        client_reply(connect_fd, "RRI", "SLD", NULL); // Sold out
+        return 0;
+    }
 
     // ADD: check if event is past
     // client_reply(connect_fd, "RRI", "PST", NULL); // Event past
+    // close event
     // return 0;
 
     // Ler people to reserve
@@ -478,9 +876,10 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: check if enough seats are available
-    // n_seats
-    // client_reply(connect_fd, "RRI", "REJ", n_seats);
+    if (pp > n_seats) {
+        client_reply(connect_fd, "RRI", "REJ", n_seats); // Not enough seats
+        return 0;
+    }
 
     // ADD: make reservation in database
 
@@ -553,7 +952,11 @@ int handle_cps(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: change password in database
+    err = change_pwd(uid, new_pwd);
+    if (err == 0) {
+        client_reply(connect_fd, "RRI", "NOK", NULL);
+        return 0;
+    }
 
     client_reply(connect_fd, "RRI", "OK", NULL);
     return 1;
