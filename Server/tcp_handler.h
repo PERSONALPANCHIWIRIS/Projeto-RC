@@ -5,6 +5,7 @@
 #define PWD_SIZE 8
 #define E_NAME_SIZE 10
 #define DATE_SIZE 16 // DD-MM-YYYY HH:MM
+#define DATE_SIZE_SEC 19 // DD-MM-YYYY HH:MM:SS
 #define P_DATE_SIZE 10 // DD-MM-YYYY
 #define TIME_SIZE 5 // HH:MM
 #define ATT_SIZE_STR 3 // max attendance size as string (max 3 digits)
@@ -45,12 +46,29 @@ int create_e_files(int eid, const char *uid, const char *name,
 int create_cls_file(const char *eid_str);
 
 /**
+ * Aux function, create reservation files and updates RES file
+ * @eid_str: EID string
+ * @uid: UID of reserver
+ * @pp: people to reserve
+ * @date: reservation date
+ * Return: 1 on success, 0 on failure
+ */
+int create_res_files(const char *eid_str, const char *uid, int pp, const char *date);
+
+/**
  * Aux function, get event status
  * @date: event date
  * @eid_str: EID string
  * Return: 1 if future and not sold_out, 0 if past, 2 if future and sold_out, 3 if closed by UID, -1 on failure
  */
 int get_status(const char *date, const char *eid_str);
+
+/**
+ * Aux function, get current date and time in format DD-MM-YYYY HH:MM
+ * @date_buf: buffer to store date string
+ * @buf_size: size of the buffer
+ */
+void get_current_date(char *date_buf, size_t buf_size);
 
 /**
  * Aux function, change user password
@@ -155,6 +173,20 @@ int check_sold_out(const char *eid_str);
  * Return: 1 if not closed, 0 if closed
  */
 int check_cls(const char *eid_str);
+
+/**
+ * Aux function, check if date is in the future
+ * @date: date string
+ * Return: 1 if future, 0 if past
+ */
+int check_future_date(const char *date);
+
+/**
+ * Aux function, check if event is in the future
+ * @eid_str: EID string
+ * Return: 1 if future, 0 if past, -1 on failure
+ */
+int check_future_event(const char *eid_str);
 
 /**
  * Handle the CRE command to create an event

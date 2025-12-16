@@ -22,7 +22,7 @@ int create_e_dir(void) {
         rmdir(eid_dirname);
         return 0;
     }
-    snprintf(desc_dirname, sizeof(desc_dirname), "EVENTS/%03d/DESCRIPTIONS", eid);
+    snprintf(desc_dirname, sizeof(desc_dirname), "EVENTS/%03d/DESCRIPTION", eid);
     ret = mkdir(desc_dirname, 0700);
     if (ret == -1) {
         rmdir(reserv_dirname);
@@ -58,12 +58,11 @@ int create_e_files(int eid, const char *uid, const char *name,
 }
 
 int create_cls_file(const char *eid_str) {
-    char date[DATE_SIZE + 1];
+    char date[DATE_SIZE_SEC + 1];
     char cls_dirname[30];
     FILE *fcls;
 
-    // ADD: get current date and time in right format
-    // DD-MM-YYYY HH:MM
+    get_current_date(date, sizeof(date));
 
     snprintf(cls_dirname, sizeof(cls_dirname), "EVENTS/%s/END_%s.txt", eid_str, eid_str);
     fcls = fopen(cls_dirname, "w");
@@ -71,6 +70,50 @@ int create_cls_file(const char *eid_str) {
         return 0;
     fprintf(fcls, "%s\n", date);
     fclose(fcls);
+
+    return 1;
+}
+
+int create_res_files(const char *eid_str, const char *uid, int pp, const char *date) {
+    char file_date[DATE_SIZE + 1];
+    char res_dirname[35];
+    char res_u_dirname[60];
+    char res_e_dirname[60];
+    FILE *fres;
+    FILE *fres_u;
+    FILE *fres_e;
+    int n_res = 0;
+    int day, month, year;
+    int hour, min, sec;
+
+    // Convert date to file-friendly format YYYYMMDD_HHMMSS
+    sscanf(date, "%d-%d-%d %d:%d:%d", &day, &month, &year, &hour, &min, &sec);
+    snprintf(file_date, sizeof(file_date), "%04d%02d%02d_%02d%02d%02d", year, month, day, hour, min, sec);
+
+    // Update RES file
+    snprintf(res_dirname, sizeof(res_dirname), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
+    fres = fopen(res_dirname, "r+");
+    if (fres == NULL)
+        return 0;
+    fscanf(fres, "%d", &n_res);
+    n_res += pp;
+    rewind(fres);
+    fprintf(fres, "%d\n", n_res);
+    fclose(fres);
+
+    // Create reservation files
+    snprintf(res_u_dirname, sizeof(res_u_dirname), "EVENTS/%s/RESERVATIONS/R-%s-%s.txt", eid_str, uid, file_date);
+    snprintf(res_e_dirname, sizeof(res_e_dirname), "USERS/%s/RESERVED/R-%s-%s.txt", uid, uid, file_date);
+    fres_e = fopen(res_e_dirname, "w");
+    if (fres_e == NULL)
+        return 0;
+    fprintf(fres_e, "%s %d %s\n", uid, pp, date);
+    fclose(fres_e);
+    fres_u = fopen(res_u_dirname, "w");
+    if (fres_u == NULL)
+        return 0;
+    fprintf(fres_u, "%s %d %s\n", uid, pp, date);
+    fclose(fres_u);
 
     return 1;
 }
@@ -106,6 +149,18 @@ int get_status(const char *date, const char *eid_str) {
     } else {
         return 0; // Evento passado
     }
+}
+
+void get_current_date(char *date_buf, size_t buf_size) {
+    time_t now = time(NULL);
+    struct tm *tm_now = localtime(&now);
+    snprintf(date_buf, buf_size, "%02d-%02d-%04d %02d:%02d:%02d",
+             tm_now->tm_mday,
+             tm_now->tm_mon + 1,
+             tm_now->tm_year + 1900,
+             tm_now->tm_hour,
+             tm_now->tm_min,
+             tm_now->tm_sec);
 }
 
 int change_pwd(const char *uid, const char *new_pwd) {
@@ -340,6 +395,50 @@ int check_cls(const char *eid_str) {
     }
 }
 
+int check_future_date(const char *date) {
+    int day, month, year;
+    int hour, minute;
+    time_t now = time(NULL);
+    struct tm *tm_now = localtime(&now);
+
+    sscanf(date, "%d-%d-%d %d:%d", &day, &month, &year, &hour, &minute);
+    if (year < (tm_now->tm_year + 1900)) return 0;
+    if (year > (tm_now->tm_year + 1900)) return 1;
+    if (month < (tm_now->tm_mon + 1)) return 0;
+    if (month > (tm_now->tm_mon + 1)) return 1;
+    if (day < tm_now->tm_mday) return 0;
+    if (day > tm_now->tm_mday) return 1;
+    if (hour < tm_now->tm_hour) return 0;
+    if (hour > tm_now->tm_hour) return 1;
+    if (minute < tm_now->tm_min) return 0;
+    return 1;
+}
+
+int check_future_event(const char *eid_str) {
+    char start_dirname[30];
+    FILE *fstart;
+    char full_date[DATE_SIZE + 1];
+    char date[P_DATE_SIZE + 1];
+    char time[TIME_SIZE + 1];
+
+    snprintf(start_dirname, sizeof(start_dirname), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
+    fstart = fopen(start_dirname, "r");
+    if (fstart == NULL) {
+        return -1; // Could not open start file
+    }
+    // Skip owner UID, event name, file name and attendance
+    fscanf(fstart, "%*s %*s %*s %*d %s %s", date, time);
+    fclose(fstart);
+
+    sscanf(full_date, "%s %s", date, time);
+
+    if (check_future_date(full_date)) {
+        return 1; // Future event
+    } else {
+        return 0; // Past event
+    }
+}
+
 int handle_cre(const char *args, int connect_fd) {
     // Implement the logic for creating an event
     char buf[1024];
@@ -363,6 +462,8 @@ int handle_cre(const char *args, int connect_fd) {
     int fsize = 0;
     int eid = 0;
     char eid_str[EID_SIZE + 1] = {0};
+    char desc_dirname[60];
+    FILE *fdesc;
     /* parse tokens in order: UID password name event_date ... */
     // Ler UID
     token = strtok_r(buf, " ", &saveptr);
@@ -460,10 +561,6 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler file_data
-    // ADD: ler ficheiro de tamanho fsize
-
-    // ADD: criar evento na base de dados
     eid = create_e_dir();
     if (eid == 0) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -475,6 +572,28 @@ int handle_cre(const char *args, int connect_fd) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
         return 0;
     }
+
+    // Read file_data to DESC directory
+    snprintf(desc_dirname, sizeof(desc_dirname), "EVENTS/%03d/DESCRIPTION/%s", eid, fname);
+    fdesc = fopen(desc_dirname, "wb");
+    if (fdesc == NULL) {
+        client_reply(connect_fd, "RCE", "NOK", NULL);
+        return 0;
+    }
+    char file_buffer[1024];
+    int bytes_remaining = fsize;
+    while (bytes_remaining > 0) {
+        int bytes_to_read = (bytes_remaining < sizeof(file_buffer)) ? bytes_remaining : sizeof(file_buffer);
+        int bytes_read = read(connect_fd, file_buffer, bytes_to_read);
+        if (bytes_read <= 0) {
+            fclose(fdesc);
+            client_reply(connect_fd, "RCE", "NOK", NULL);
+            return 0;
+        }
+        fwrite(file_buffer, 1, bytes_read, fdesc);
+        bytes_remaining -= bytes_read;
+    }
+    fclose(fdesc);
 
     snprintf(eid_str, sizeof(eid_str), "%03d", eid);
     client_reply(connect_fd, "RCE", "OK", eid_str);
@@ -560,9 +679,15 @@ int handle_cls(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: check if event is past
-    // client_reply(connect_fd, "RCL", "PST", NULL); // Event past
-    // return 0;
+    err = check_future_event(eid_str);
+    if (err == -1) {
+        client_reply(connect_fd, "RCL", "NOK", NULL); // Failure
+        return 0;
+    }
+    if (err == 0) {
+        client_reply(connect_fd, "RCL", "PST", NULL); // Event past
+        return 0;
+    }
 
     err = check_cls(eid_str);
     if (err == 0) {
@@ -663,6 +788,7 @@ int handle_sed(const char *args, int connect_fd) {
     char *token;
 
     int err = 0;
+    int future = 0;
 
     int att = 0;
     int res = 0;
@@ -765,7 +891,10 @@ int handle_sed(const char *args, int connect_fd) {
     strcat(file_data, " ");
     strcat(file_data, fdata);
 
-    // ADD: if expired, close event
+    future = check_future_date(date);
+    if (future == 0) {
+        err = create_cls_file(eid_str);
+    }
 
     client_reply(connect_fd, "RSE", "OK", file_data);
 
@@ -787,6 +916,7 @@ int handle_rid(const char *args, int connect_fd) {
     char pwd[PWD_SIZE + 1] = {0};
     char eid_str[EID_SIZE + 1] = {0};
     char pp_str[PP_SIZE_STR + 1] = {0};
+    char date[DATE_SIZE_SEC + 1] = {0};
 
     int pp = 0;
     int n_seats = 0;
@@ -858,10 +988,16 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: check if event is past
-    // client_reply(connect_fd, "RRI", "PST", NULL); // Event past
-    // close event
-    // return 0;
+    err = check_future_event(eid_str);
+    if (err == -1) {
+        client_reply(connect_fd, "RRI", "NOK", NULL); // Failure
+        return 0;
+    }
+    if (err == 0) {
+        client_reply(connect_fd, "RRI", "PST", NULL); // Event past
+        create_cls_file(eid_str);
+        return 0;
+    }
 
     // Ler people to reserve
     token = strtok_r(NULL, " ", &saveptr);
@@ -881,7 +1017,13 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // ADD: make reservation in database
+    get_current_date(date, sizeof(date));
+    
+    err = create_reservation(uid, eid_str, pp, date);
+    if (err == 0) {
+        client_reply(connect_fd, "RRI", "NOK", NULL); // Failure
+        return 0;
+    }
 
     client_reply(connect_fd, "RRI", "ACC", NULL);
     
