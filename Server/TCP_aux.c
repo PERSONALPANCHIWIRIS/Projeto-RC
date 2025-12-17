@@ -595,10 +595,10 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
     char file_buffer[1024];
-    int bytes_remaining = fsize;
+    size_t bytes_remaining = fsize;
     while (bytes_remaining > 0) {
-        int bytes_to_read = (bytes_remaining < sizeof(file_buffer)) ? bytes_remaining : sizeof(file_buffer);
-        int bytes_read = read(connect_fd, file_buffer, bytes_to_read);
+        size_t bytes_to_read = (bytes_remaining < sizeof(file_buffer)) ? bytes_remaining : sizeof(file_buffer);
+        ssize_t bytes_read = read(connect_fd, file_buffer, bytes_to_read);
         if (bytes_read <= 0) {
             fclose(fdesc);
             client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -939,7 +939,9 @@ int handle_rid(const char *args, int connect_fd) {
     char pp_str[PP_SIZE_STR + 1] = {0};
     char date[DATE_SIZE_SEC + 1] = {0};
 
-    int pp = 0;
+    //int pp = 0;
+    int pp;
+    pp = 0;
     int n_seats = 0;
 
     // Read UID
@@ -1064,7 +1066,7 @@ int handle_cps(const char *args, int connect_fd) {
     char old_pwd[PWD_SIZE + 1] = {0};
     char new_pwd[PWD_SIZE + 1] = {0};
 
-    int pp = 0;
+    //int pp = 0;
 
     // Read UID
     token = strtok_r(buf, " ", &saveptr);
