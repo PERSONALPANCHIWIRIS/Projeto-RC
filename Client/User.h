@@ -657,7 +657,7 @@ public:
                 fields_read++;
         }
 
-        // parse header
+        //parse sem o fdata
         istringstream iss(header);
         iss >> rse >> status >> uid >> name >> event_date >> event_hour
         >> attendance_size >> seats_reserved >> fname >> fsize;
@@ -666,7 +666,6 @@ public:
         !verify_alphanumeric(name) || !verify_date(event_date) || !verify_hour(event_hour) || 
         !verify_numeric(attendance_size) || !verify_numeric(seats_reserved) || !verify_filename(fname)){
             cout << "->Error: invalid message" << endl;
-            //cout << rse << " " << status << " " << uid << " " << name << " " << event_date << " " << event_hour << " " << attendance_size << " " << seats_reserved << " " << fname << " " << fsize << endl;
             close(fd);
             return "error";
         }
@@ -681,15 +680,15 @@ public:
 
         string filename_dir = "SHOW/" + fname;
 
-        // Ensure directory exists (Linux)
+        //Verifica se a pasta SHOW existe, se não existir cria-a
         if (!dir_exists("SHOW")){
             mkdir("SHOW", 0777);
         }
     
-        // Remove file if it already exists
+        //Elimina se já existe
         remove(filename_dir.c_str());
 
-        // Open file in binary mode
+        //Binario
         ofstream outfile(filename_dir, ios::binary);
         if (!outfile) {
             cout << "->Error: couldn't open file" << endl;
@@ -700,6 +699,7 @@ public:
         char file_buffer[BUFFER_SIZE];
         int remaining = size;
 
+        //Receve a fdata em si propria
         while (remaining > 0) {
             int to_read = min(BUFFER_SIZE, remaining);
             int r_n = recv(fd, file_buffer, to_read, 0);
@@ -715,7 +715,7 @@ public:
             remaining -= r_n;
         }
 
-        // Read trailing '\n'
+        //Ler até \n
         char newline;
         recv(fd, &newline, 1, 0);
 

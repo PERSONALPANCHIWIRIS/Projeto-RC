@@ -485,7 +485,6 @@ void show_cmd(TCPuser tcp, string inputs){
         istringstream iss(inputs);
         //iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize >> rest;
         iss >> owner >> name >> event_date >> event_hour >> attendance >> reserved >> fname >> fsize;
-        //cout << "->Raw response: " << inputs << endl;
 
         if(fname.size()>24 || !verify_filename(fname)){
             cout << "->Error: incorrect filename format" << endl;
@@ -499,7 +498,9 @@ void show_cmd(TCPuser tcp, string inputs){
             cout << "->Error: file too big" << endl;
             return;
         }
-        else if (event_date.size()!=10 || !verify_date(event_date) || event_hour.size()!=5 || !isalnum(event_hour[0]) || !isalnum(event_hour[1]) || event_hour[2]!=':' || !isalnum(event_hour[3]) || !isalnum(event_hour[4])){
+        else if (event_date.size()!=10 || !verify_date(event_date) || event_hour.size()!=5 ||
+        !isalnum(event_hour[0]) || !isalnum(event_hour[1]) || event_hour[2]!=':' ||
+        !isalnum(event_hour[3]) || !isalnum(event_hour[4])){
             cout << "->Error: incorrect event_date format" << endl;
             return;
         }
