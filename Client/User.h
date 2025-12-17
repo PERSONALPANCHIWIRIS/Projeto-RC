@@ -307,7 +307,7 @@ public:
     }
 
     //função que estabelece a conecção TCP com o servidor destino e envia uma
-    //mensagem de pedido de asset e recebe o asset RSA(3) STATUS(3) FNAME(24) FSIZE(8) FDATA(?)
+    //mensagem de pedido de asset e recebe o asset RSE(3) STATUS(3) UID(3) NAME() EVENT_DATE(16) ATTENDANCE_SIZE(3) SEATS_RESERVED(3) FNAME(24) FSIZE(8) FDATA(?)
     string connect_assets(string message){
 
         //Criação do socket TCP
@@ -396,10 +396,10 @@ public:
         //Receção de mensagem do servidor destino (fsize)
         string control=command;
         istringstream iss(control);
-        string rsa, status, fname, fsize;
-        iss >> rsa >> status >> fname >> fsize;
+        string rse, status, uid, name, event_date, attendance_size, seats_reserved, fname, fsize;
+        iss >> rse >> status >> uid >> name >> event_date >> attendance_size >> seats_reserved >> fname >> fsize;
         //verificar se a mensagem recebida é válida
-        if(!verify_alphanumeric(rsa) || !verify_alphanumeric(status) || !verify_filename(fname)){
+        if(!verify_alphanumeric(rse) || !verify_alphanumeric(status) ||!verify_numeric(uid) || !verify_alphanumeric(name) || !verify_date(event_date) || !verify_numeric(attendance_size) || !verify_numeric(seats_reserved) || !verify_filename(fname)){
             cout << "->Error: invalid message" << endl;
             close(fd);
             return "error";
