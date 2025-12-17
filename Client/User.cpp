@@ -464,14 +464,14 @@ void list_cmd(TCPuser tcp){
 void show_cmd(TCPuser tcp, string inputs){
     cout << "->show..." << endl;
     istringstream iss(inputs);
-    string command, EID, owner, name, event_date, attendance, reserved, fname, fsize, rest;
+    string command, EID, owner, name, event_date, event_hour, attendance, reserved, fname, fsize, rest;
     iss >> command >> EID;
     if(EID.size()!=3 || !verify_numeric(EID)){
         cout << "->Error: incorrect EID format" << endl;
         return;
     }
     string message = "SED " + EID + "\n";
-    string response = tcp.connect_assets(message);
+    string response = tcp.show_cmd_tcp(message);
     if(response=="error"){
         cout << "->Error connecting to server" << endl;
         return;
@@ -483,7 +483,9 @@ void show_cmd(TCPuser tcp, string inputs){
     else if(response.substr(0,6)=="RSE OK"){
         string inputs = response.substr(7);
         istringstream iss(inputs);
-        iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize >> rest;
+        //iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize >> rest;
+        iss >> owner >> name >> event_date >> event_hour >> attendance >> reserved >> fname >> fsize;
+        //cout << "->Raw response: " << inputs << endl;
 
         if(fname.size()>24 || !verify_filename(fname)){
             cout << "->Error: incorrect filename format" << endl;
@@ -497,7 +499,7 @@ void show_cmd(TCPuser tcp, string inputs){
             cout << "->Error: file too big" << endl;
             return;
         }
-        else if (event_date.size()!=16 || !verify_date(event_date)){
+        else if (event_date.size()!=10 || !verify_date(event_date) || event_hour.size()!=5 || !isalnum(event_hour[0]) || !isalnum(event_hour[1]) || event_hour[2]!=':' || !isalnum(event_hour[3]) || !isalnum(event_hour[4])){
             cout << "->Error: incorrect event_date format" << endl;
             return;
         }
@@ -509,7 +511,8 @@ void show_cmd(TCPuser tcp, string inputs){
             cout << "->Error: incorrect reserved format" << endl;
             return;
         }
-        //na directoria /SHOW colocar o asset com
+
+       /*  //na directoria /SHOW colocar o asset com
         string filename = "Client/SHOW/" + fname;
         //apagar ficheiro se já existir (substiuição)
         remove(filename.c_str());
@@ -526,16 +529,16 @@ void show_cmd(TCPuser tcp, string inputs){
         } else {
             cout << "->Error: couldn't open file" << endl;
             return;
-        }
+        } */
 
         cout << "->Event owner: " << owner << endl;
         cout << "->Event name: " << name << endl;
         cout << "->Event date: " << event_date << endl;
         cout << "->Attendance size: " << attendance << endl;
         cout << "->Seats reserved: " << reserved << endl;
-        cout << "->File saved: " << filename << endl;
+        cout << "->File saved: " << fname << endl;
         cout << "->File size: " << fsize << " bytes" << endl;
-        cout << "->File Content: " << rest << endl;
+        //cout << "->File Content: " << rest << endl;
     }
     else{//RSE ERR
         cout << "->Error occurred!" << endl;
