@@ -128,12 +128,7 @@ int get_status(const char *date, const char *eid_str) {
     }
 
     // Check date
-    int day, month, year;
-    int hour, minute;
-    int avail = 0;
-
-    sscanf(date, "%d-%d-%d %d:%d", &day, &month, &year, &hour, &minute);
-    if (check_event_date(day, month, year, hour, minute)) {
+    if (check_future_date(date)) {
         // Future event
         // Check if sold out
         int avail = check_sold_out(eid_str);
@@ -256,7 +251,7 @@ int check_name(const char *name) {
 
 int check_date(const char *date) {
     if (!date) return 0;
-    if (strnlen(date) != DATE_SIZE) return 0; // Acho que não é preciso
+    if (strnlen(date) != DATE_SIZE) return 0;
     if (date[2] != '-' || date[5] != '-' || date[10] != ' ' || date[13] != ':') return 0;
     for (size_t i = 0; i < DATE_SIZE; i++) {
         if (i == 2 || i == 5 || i == 10 || i == 13) continue;
@@ -453,7 +448,9 @@ int handle_cre(const char *args, int connect_fd) {
     char uid[UID_SIZE + 1] = {0};
     char pwd[PWD_SIZE + 1] = {0};
     char name[E_NAME_SIZE + 1] = {0};
-    char date[DATE_SIZE + 1] = {0};
+    char full_date[DATE_SIZE + 1] = {0};
+    char date[P_DATE_SIZE + 1] = {0};
+    char time[TIME_SIZE + 1] = {0};
     char att_str[ATT_SIZE_STR + 1] = {0};
     char fname[F_NAME_SIZE + 1] = {0};
     char fsize_str[F_SIZE_STR + 1] = {0};
@@ -465,7 +462,7 @@ int handle_cre(const char *args, int connect_fd) {
     char desc_dirname[60];
     FILE *fdesc;
     /* parse tokens in order: UID password name event_date ... */
-    // Ler UID
+    // Read UID
     token = strtok_r(buf, " ", &saveptr);
     if (!token || strlen(token) != UID_SIZE) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -482,7 +479,7 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler password
+    // Read password
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != PWD_SIZE) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -499,7 +496,7 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
     
-    // Ler event_name
+    // Read event_name
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) > E_NAME_SIZE) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -511,19 +508,28 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler event_date
+    // Read event_date
     token = strtok_r(NULL, " ", &saveptr);
-    if (!token || strlen(token) != DATE_SIZE) {
+    if (!token || strlen(token) != P_DATE_SIZE) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
         return 0;
     }
-    strncpy(date, token, DATE_SIZE);
-    if (!check_date(date)) {
+    strncpy(date, token, P_DATE_SIZE);
+
+    token = strtok_r(NULL, " ", &saveptr);
+    if (!token || strlen(token) != TIME_SIZE) {
+        client_reply(connect_fd, "RCE", "NOK", NULL);
+        return 0;
+    }
+    strncpy(time, token, TIME_SIZE);
+
+    snprintf(full_date, sizeof(full_date), "%s %s", date, time);
+    if (!check_date(full_date)) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
         return 0;
     }
 
-    // Ler attendance_size
+    // Read attendance_size
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) > ATT_SIZE_STR) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -536,7 +542,7 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler file_name
+    // Read file_name
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) > F_NAME_SIZE) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -548,7 +554,7 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler file_size
+    // Read file_size
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) > F_SIZE_STR) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -561,6 +567,7 @@ int handle_cre(const char *args, int connect_fd) {
         return 0;
     }
 
+    // Create event
     eid = create_e_dir();
     if (eid == 0) {
         client_reply(connect_fd, "RCE", "NOK", NULL);
@@ -616,7 +623,7 @@ int handle_cls(const char *args, int connect_fd) {
     char pwd[PWD_SIZE + 1] = {0};
     char eid_str[EID_SIZE + 1] = {0};
 
-    // Ler UID
+    // Read UID
     token = strtok_r(buf, " ", &saveptr);
     if (!token || strlen(token) != UID_SIZE) {
         client_reply(connect_fd, "RCL", "NOK", NULL);
@@ -633,10 +640,10 @@ int handle_cls(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler password
+    // Read password
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != PWD_SIZE) {
-        client_reply(connect_fd, "RCE", "NOK", NULL);
+        client_reply(connect_fd, "RCL", "NOK", NULL);
         return 0;
     }
     strncpy(pwd, token, PWD_SIZE);
@@ -646,7 +653,7 @@ int handle_cls(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler EID
+    // Read EID
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != EID_SIZE) {
         client_reply(connect_fd, "RCL", "NOK", NULL);
@@ -695,6 +702,7 @@ int handle_cls(const char *args, int connect_fd) {
         return 0;
     }
 
+    // Close event
     err = create_cls_file(eid_str);
     if (err == 0) {
         client_reply(connect_fd, "RCL", "NOK", NULL); // Failure
@@ -743,7 +751,7 @@ int handle_lst(const char *args, int connect_fd) {
         if (fstart == NULL) {
             continue; // Could not open start file, skip this event
         }
-        // Read event details
+        // Read event details, skip owner UID, file name and attendance
         fscanf(fstart, "%*s %s %*s %*d %s %s", name, date, time);
         fclose(fstart);
         snprintf(full_date, sizeof(full_date), "%s %s", date, time);
@@ -753,6 +761,7 @@ int handle_lst(const char *args, int connect_fd) {
             continue; // Error getting status, skip this event
         }
 
+        // Append event details to event_list
         strncat(event_list, eid_str);
         strncat(event_list, " ");
         strncat(event_list, name);
@@ -797,7 +806,9 @@ int handle_sed(const char *args, int connect_fd) {
     char eid_str[EID_SIZE + 1] = {0};
     char uid[UID_SIZE + 1] = {0};
     char name[E_NAME_SIZE + 1] = {0};
-    char date[DATE_SIZE + 1] = {0};
+    char full_date[DATE_SIZE + 1] = {0};
+    char date[P_DATE_SIZE + 1] = {0};
+    char time[TIME_SIZE + 1] = {0};
     char att_str[ATT_SIZE_STR + 1] = {0};
     char res_str[ATT_SIZE_STR + 1] = {0};
     char fname[F_NAME_SIZE + 1];
@@ -813,7 +824,7 @@ int handle_sed(const char *args, int connect_fd) {
 
     char *file_data = NULL;
 
-    // Ler EID
+    // Read EID
     token = strtok_r(buf, " ", &saveptr);
     if (!token || strlen(token) != EID_SIZE) {
         client_reply(connect_fd, "RSE", "NOK", NULL);
@@ -837,8 +848,9 @@ int handle_sed(const char *args, int connect_fd) {
         client_reply(connect_fd, "RSE", "NOK", NULL);
         return 0;
     }
-    fscanf(fstart, "%s %s %s %d %s", uid, name, fname, &att, date);
+    fscanf(fstart, "%s %s %s %d %s %s", uid, name, fname, &att, date, time);
     fclose(fstart);
+    snprintf(full_date, sizeof(full_date), "%s %s", date, time);
 
     // Read current reservations from RES file
     snprintf(res_dirname, sizeof(res_dirname), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
@@ -879,7 +891,7 @@ int handle_sed(const char *args, int connect_fd) {
     strcat(file_data, " ");
     strcat(file_data, name);
     strcat(file_data, " ");
-    strcat(file_data, date);
+    strcat(file_data, full_date);
     strcat(file_data, " ");
     strcat(file_data, att_str);
     strcat(file_data, " ");
@@ -891,7 +903,8 @@ int handle_sed(const char *args, int connect_fd) {
     strcat(file_data, " ");
     strcat(file_data, fdata);
 
-    future = check_future_date(date);
+    // If event date is past, create CLS file
+    future = check_future_date(full_date);
     if (future == 0) {
         err = create_cls_file(eid_str);
     }
@@ -921,7 +934,7 @@ int handle_rid(const char *args, int connect_fd) {
     int pp = 0;
     int n_seats = 0;
 
-    // Ler UID
+    // Read UID
     token = strtok_r(buf, " ", &saveptr);
     if (!token || strlen(token) != UID_SIZE) {
         client_reply(connect_fd, "RRI", "NOK", NULL);
@@ -938,7 +951,7 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler password
+    // Read password
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != PWD_SIZE) {
         client_reply(connect_fd, "RRI", "NOK", NULL);
@@ -955,7 +968,7 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler EID
+    // Read EID
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != EID_SIZE) {
         client_reply(connect_fd, "RRI", "NOK", NULL);
@@ -963,12 +976,8 @@ int handle_rid(const char *args, int connect_fd) {
     }
     strncpy(eid_str, token, EID_SIZE);
     err = check_eid(eid_str);
-    if (err == 0) {
+    if (err != 1) {
         client_reply(connect_fd, "RRI", "NOK", NULL);
-        return 0;
-    }
-    if (err == -1) {
-        client_reply(connect_fd, "RRI", "NOE", NULL); // Does not exist
         return 0;
     }
 
@@ -999,7 +1008,7 @@ int handle_rid(const char *args, int connect_fd) {
         return 0;
     }
 
-    // Ler people to reserve
+    // Read people to reserve
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) > PP_SIZE_STR) {
         client_reply(connect_fd, "RRI", "NOK", NULL);
@@ -1047,59 +1056,59 @@ int handle_cps(const char *args, int connect_fd) {
 
     int pp = 0;
 
-    // Ler UID
+    // Read UID
     token = strtok_r(buf, " ", &saveptr);
     if (!token || strlen(token) != UID_SIZE) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
     strncpy(uid, token, UID_SIZE);
     err = check_uid(uid);
     if (err == 0) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
     if (err == -1) {
-        client_reply(connect_fd, "RRI", "NLG", NULL); // Not logged in
+        client_reply(connect_fd, "RCP", "NLG", NULL); // Not logged in
         return 0;
     }
     if (err == -2) {
-        client_reply(connect_fd, "RRI", "NID", NULL); // Not in database
+        client_reply(connect_fd, "RCP", "NID", NULL); // Not in database
         return 0;
     }
 
-    // Ler old password
+    // Read old password
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != PWD_SIZE) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
     strncpy(old_pwd, token, PWD_SIZE);
     err = check_pwd(uid, old_pwd);
     if (err != 1) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
 
-    // Ler new password
+    // Read new password
     token = strtok_r(NULL, " ", &saveptr);
     if (!token || strlen(token) != PWD_SIZE) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
     strncpy(new_pwd, token, PWD_SIZE);
     err = check_pwd(uid, new_pwd);
     if (err == 0) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
 
     err = change_pwd(uid, new_pwd);
     if (err == 0) {
-        client_reply(connect_fd, "RRI", "NOK", NULL);
+        client_reply(connect_fd, "RCP", "NOK", NULL);
         return 0;
     }
 
-    client_reply(connect_fd, "RRI", "OK", NULL);
+    client_reply(connect_fd, "RCP", "OK", NULL);
     return 1;
 }

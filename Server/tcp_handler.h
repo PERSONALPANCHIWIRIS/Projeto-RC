@@ -176,7 +176,7 @@ int check_cls(const char *eid_str);
 
 /**
  * Aux function, check if date is in the future
- * @date: date string
+ * @date: date DD-MM-YYYY HH:MM
  * Return: 1 if future, 0 if past
  */
 int check_future_date(const char *date);
