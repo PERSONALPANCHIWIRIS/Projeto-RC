@@ -14,6 +14,8 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <sys/stat.h>
+#include <cmath>
 
 using namespace std;
 #define SERVER_PORT "58038"
@@ -31,6 +33,12 @@ int verify_alphanumeric(string str){
         }
     }
     return 1;
+}
+
+bool dir_exists(const char *path) {
+    struct stat st;
+    if (stat(path, &st) != 0) return false;   
+    return S_ISDIR(st.st_mode);                
 }
 
 /*verify_alphanumeric(string str)
@@ -91,6 +99,28 @@ int verify_date(string str){
     }
 
     if(day < 1 || day > mdays) return 0;
+
+    return 1;
+}
+
+int verify_hour(string str){
+    //hh:mm
+    if(str.size() != 5) return 0;
+
+    if(!isdigit(str[0]) || !isdigit(str[1]) ||
+       !isdigit(str[3]) || !isdigit(str[4])) {
+        return 0;
+    }
+
+    // separator at fixed position
+    if(str[2] != ':') return 0;
+
+    //parse
+    int hour = stoi(str.substr(0,2));
+    int minute = stoi(str.substr(3,2));
+
+    if(hour < 0 || hour > 23 || minute < 0 || minute > 59)
+        return 0;
 
     return 1;
 }
@@ -393,13 +423,15 @@ public:
             }
         }
 
-        //Receção de mensagem do servidor destino (fsize)
         string control=command;
         istringstream iss(control);
-        string rse, status, uid, name, event_date, attendance_size, seats_reserved, fname, fsize;
-        iss >> rse >> status >> uid >> name >> event_date >> attendance_size >> seats_reserved >> fname >> fsize;
+        string rse, status, uid, name, event_date, event_hour, attendance_size, seats_reserved, fname, fsize;
+        iss >> rse >> status >> uid >> name >> event_date >> event_hour >> attendance_size >> seats_reserved >> fname >> fsize;
         //verificar se a mensagem recebida é válida
-        if(!verify_alphanumeric(rse) || !verify_alphanumeric(status) ||!verify_numeric(uid) || !verify_alphanumeric(name) || !verify_date(event_date) || !verify_numeric(attendance_size) || !verify_numeric(seats_reserved) || !verify_filename(fname)){
+        cout << event_date << event_hour << "SERRAAAAAA" << endl;
+        if(!verify_alphanumeric(rse) || !verify_alphanumeric(status) ||!verify_numeric(uid) || 
+        !verify_alphanumeric(name) || !verify_date(event_date) || !verify_hour(event_hour) || 
+        !verify_numeric(attendance_size) || !verify_numeric(seats_reserved) || !verify_filename(fname)){
             cout << "->Error: invalid message" << endl;
             close(fd);
             return "error";
@@ -414,6 +446,7 @@ public:
 
         //Receção de mensagem do servidor destino (fdata)
         char buffer_mid[BUFFER_SIZE];
+        //cout << rse << " " << status << " " << uid << " " << name << " " << event_date << " " << event_hour << " " << attendance_size << " " << seats_reserved << " " << fname << " " << fsize << endl;
         while(size > BUFFER_SIZE) {//se o ficheiro for maior que o buffer
             memset(buffer_mid, 0, BUFFER_SIZE);
             int r_n = recv(fd, buffer_mid, BUFFER_SIZE, 0);
@@ -424,12 +457,14 @@ public:
                     return "error";
                 }
                 cout << "->Error receiving message" << endl;
+                //cout << "-DEBUG 1111111" << endl;
                 close(fd);
                 return "error";
             }
             //se a conexão for fechada pelo servidor sem enviar mensagem com \n
             if(r_n==0){
                 cout << "->Error receiving message" << endl;
+                //cout << "-DEBUG 2222222" << endl;
                 close(fd);
                 return "error";
             }
@@ -554,5 +589,167 @@ public:
         string response = comd.substr(0, linepos + 1);
         return response;
     }
+
+    string show_cmd_tcp(string message){
+        //Criação do socket TCP
+        int fd = socket(AF_INET, SOCK_STREAM, 0);
+        if (fd < 0) {
+            cout << "->Error creating socket" << std::endl;
+            return "error";
+        }
+
+        struct addrinfo hints, *res;
+        memset(&hints, 0, sizeof hints);
+        hints.ai_family = AF_INET;          //IPv4
+        hints.ai_socktype = SOCK_STREAM;    //TCP socket
+
+        //Obtenção de informação sobre o servidor destino
+        int errcode = getaddrinfo(host.c_str(), to_string(port).c_str(), &hints, &res);
+        if (errcode != 0) {
+            cout << "->Error getting address info: " << gai_strerror(errcode) << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        //Conexão ao servidor destino
+        int n = connect(fd, res->ai_addr, res->ai_addrlen);
+        if (n == -1) {
+            cout << "->Error connecting to server" << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        struct timeval tv;
+        tv.tv_sec = 5; // 5 seconds
+        tv.tv_usec = 0;
+
+        if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv))<0) {
+            cout << "->Error setting timeout" << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        //Envio de mensagem para o servidor destino
+        int w_n = send(fd, message.c_str(), message.size(), 0);
+        //Verificação de erros no envio de mensagem
+        if (w_n == -1) {
+            cout << "->Error sending message" << std::endl;
+            close(fd);
+            return "error";
+        }
+
+        char buffer[4000];
+        string command="";
+        string rse, status, uid, name, event_date, event_hour;
+        string attendance_size, seats_reserved, fname, fsize;
+        int fields_read = 0;
+        string header = "";
+
+        while (fields_read < 10) { //elementos antes do FDATA
+            int r_n = recv(fd, buffer, 1, 0);
+            if (r_n <= 0) {
+                cout << "->Error receiving message" << endl;
+                close(fd);
+                return "error";
+            }
+
+            header += buffer[0];
+            if (buffer[0] == ' ')
+                fields_read++;
+        }
+
+        //parse sem o fdata
+        istringstream iss(header);
+        iss >> rse >> status >> uid >> name >> event_date >> event_hour
+        >> attendance_size >> seats_reserved >> fname >> fsize;
+
+        if(!verify_alphanumeric(rse) || !verify_alphanumeric(status) ||!verify_numeric(uid) || 
+        !verify_alphanumeric(name) || !verify_date(event_date) || !verify_hour(event_hour) || 
+        !verify_numeric(attendance_size) || !verify_numeric(seats_reserved) || !verify_filename(fname)){
+            cout << "->Error: invalid message" << endl;
+            close(fd);
+            return "error";
+        }
+        //verificar se o fsize é numérico
+        if(!verify_numeric(fsize) && fsize.size()>8){//verificar se o fsize é numérico
+            cout << "->Error: invalid message" << endl;
+            close(fd);
+            return "error";
+        }
+        if(fname.size()>24){
+            cout << "->Error: incorrect filename format" << endl;
+            return "error";
+        }
+
+        if(fsize.size() > 10*pow(10,6)){
+            cout << "->Error: file too big" << endl;
+            return "error";
+        }
+
+        if(attendance_size.size()>3 || attendance_size.size()<2){
+            cout << "->Error: incorrect attendance format" << endl;
+            return "error";
+        }
+
+        /* if(seats_reserved == "0"){
+            cout << "->Error: incorrect reserved format" << endl;
+            return "error";
+        } */
+
+        int size=stoi(fsize);//tamanho do ficheiro (fdata)
+
+        string eid = message.substr(4, message.size() - 5); //extrai o EID da mensagem enviada
+
+        string filename_dir = "SHOW/" + eid + "/" + fname;
+
+        //Verifica se a pasta SHOW existe, se não existir cria-a
+        if (!dir_exists(("SHOW/" + eid).c_str()) || !dir_exists("SHOW/")) {
+            mkdir ("SHOW", 0777);
+            mkdir(("SHOW/" + eid).c_str(), 0777);
+        }
+    
+        //Elimina se já existe
+        remove(filename_dir.c_str());
+
+        //Binario
+        ofstream outfile(filename_dir, ios::binary);
+        if (!outfile) {
+            cout << "->Error: couldn't open file" << endl;
+            close(fd);
+            return "error";
+        }
+
+        char file_buffer[BUFFER_SIZE];
+        int remaining = size;
+
+        //Receve a fdata em si propria
+        while (remaining > 0) {
+            int to_read = min(BUFFER_SIZE, remaining);
+            int r_n = recv(fd, file_buffer, to_read, 0);
+
+            if (r_n <= 0) {
+                cout << "->Error receiving file data" << endl;
+                outfile.close();
+                close(fd);
+                return "error";
+            }
+
+            outfile.write(file_buffer, r_n);
+            remaining -= r_n;
+        }
+
+        //Ler até \n
+        char newline;
+        recv(fd, &newline, 1, 0);
+
+        outfile.close();
+        close(fd);
+
+        string response = "RSE OK " + uid + " " + name + " " + event_date + " "
+        + event_hour + " " + attendance_size + " " + seats_reserved + " " + fname + " " + fsize;
+
+        return response; 
+
+        }
 };
 
