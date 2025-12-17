@@ -15,6 +15,7 @@
 #include <cstring>
 #include <vector>
 #include <sys/stat.h>
+#include <cmath>
 
 using namespace std;
 #define SERVER_PORT "58038"
@@ -675,14 +676,36 @@ public:
             close(fd);
             return "error";
         }
+        if(fname.size()>24){
+            cout << "->Error: incorrect filename format" << endl;
+            return "error";
+        }
+
+        if(fsize.size() > 10*pow(10,6)){
+            cout << "->Error: file too big" << endl;
+            return "error";
+        }
+
+        if(attendance_size.size()>3 || attendance_size.size()<2){
+            cout << "->Error: incorrect attendance format" << endl;
+            return "error";
+        }
+
+        if(seats_reserved == "0"){
+            cout << "->Error: incorrect reserved format" << endl;
+            return "error";
+        }
 
         int size=stoi(fsize);//tamanho do ficheiro (fdata)
 
-        string filename_dir = "SHOW/" + fname;
+        string eid = message.substr(4, message.size() - 5); //extrai o EID da mensagem enviada
+
+        string filename_dir = "SHOW/" + eid + "/" + fname;
 
         //Verifica se a pasta SHOW existe, se não existir cria-a
-        if (!dir_exists("SHOW")){
-            mkdir("SHOW", 0777);
+        if (!dir_exists(("SHOW/" + eid).c_str()) || !dir_exists("SHOW/")) {
+            mkdir ("SHOW", 0777);
+            mkdir(("SHOW/" + eid).c_str(), 0777);
         }
     
         //Elimina se já existe

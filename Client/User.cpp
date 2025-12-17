@@ -486,7 +486,7 @@ void show_cmd(TCPuser tcp, string inputs){
         //iss >> owner >> name >> event_date >> attendance >> reserved >> fname >> fsize >> rest;
         iss >> owner >> name >> event_date >> event_hour >> attendance >> reserved >> fname >> fsize;
 
-        if(fname.size()>24 || !verify_filename(fname)){
+        /* if(fname.size()>24 || !verify_filename(fname)){
             cout << "->Error: incorrect filename format" << endl;
             return;
         }
@@ -508,10 +508,10 @@ void show_cmd(TCPuser tcp, string inputs){
             cout << "->Error: incorrect attendance format" << endl;
             return;
         }
-        else if(reserved.size()>3 || reserved.size()<2 || !verify_numeric(reserved)){
+        else if(reserved == "0" || !verify_numeric(reserved)){
             cout << "->Error: incorrect reserved format" << endl;
             return;
-        }
+        } */
 
        /*  //na directoria /SHOW colocar o asset com
         string filename = "Client/SHOW/" + fname;
@@ -616,14 +616,14 @@ void change_pass_cmd(string UID, string old_password, string new_password, TCPus
     else if(response=="RCP NLG\n"){
         cout << "->Error: user not logged in" << endl;
     }
-    else if(response=="RCP WRP\n"){
-        cout << "->Error: old password incorrect" << endl;
+    else if(response=="RCP NID\n"){
+        cout << "->Error: user does not exist" << endl;
     }
     else if(response=="RCP OK\n"){
         cout << "->Password changed successfully!" << endl;
     }
     else if(response=="RCP NOK\n"){
-        cout << "->Error: user doesn't exist" << endl;
+        cout << "->Error: wrong password" << endl;
     }
     else{//RCP ERR
         cout <<"->Error occurred!" << endl;
@@ -763,7 +763,8 @@ int main(int argc, char *argv[]){
         }
         //CHANGEPASS(tcp)
         else if(command=="changePass" && logged_in==1){
-            string new_password;
+            string new_password, old_password;
+            iss >> old_password;
             iss >> new_password;
             //verifica se a nova password é válida
             if(new_password.size()!=8 || !verify_alphanumeric(new_password)){
@@ -771,7 +772,7 @@ int main(int argc, char *argv[]){
                 command.clear();
                 continue;
             }
-            change_pass_cmd(UID, password, new_password, tcp);
+            change_pass_cmd(UID, old_password, new_password, tcp);
             //atualizar a password
             password=new_password;
             command.clear();
