@@ -31,6 +31,12 @@ int main(int argc, char *argv[]) {
         perror("TCP socket"); exit(1);
     }
 
+    int opt = 1;
+    if (setsockopt(tcp_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt SO_REUSEADDR");
+        exit(1);
+    }
+
     //Address para bind
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));

@@ -22,7 +22,7 @@ void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, 
     }
 
     if (!pass_is_valid(password)){
-        char* reply = "RLI WRP\n"; //Password inválida
+        char* reply = "RLI NOK\n"; //Password inválida
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
