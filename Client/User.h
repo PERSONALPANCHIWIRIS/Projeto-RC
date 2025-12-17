@@ -691,10 +691,10 @@ public:
             return "error";
         }
 
-        if(seats_reserved == "0"){
+        /* if(seats_reserved == "0"){
             cout << "->Error: incorrect reserved format" << endl;
             return "error";
-        }
+        } */
 
         int size=stoi(fsize);//tamanho do ficheiro (fdata)
 

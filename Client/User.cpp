@@ -265,7 +265,7 @@ void my_reservations_cmd(string UID, UDPuser udp, string password){
 void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     cout << "->creating event..." << endl;
     istringstream iss(inputs);
-    string command, name, event_date, attendance_size, asset, fsize, fdata;
+    string command, name, event_date, event_hour, attendance_size, asset, fsize, fdata;
     //verificar se os inputs são válidos
     iss >> command;
     iss >> name;
@@ -280,19 +280,27 @@ void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     }
     //event_date indicating the date and time (dd-mm-yyyy hh:mm) of the event
     iss >> event_date;
-    if(event_date.size()!=16 || !verify_date(event_date)){
+    if(event_date.size()!=10 || !verify_date(event_date)){
         cout << "->Error: incorrect event_date format" << endl;
         return;
     }
+    iss >> event_hour;
+    if(event_hour.size()!=5 || !verify_hour(event_hour)){
+        cout << "->Error: incorrect event_hour format" << endl;
+        return;
+    }
+
     iss >> attendance_size;
     if(attendance_size.size()>3 || attendance_size.size()<2 || !verify_numeric(attendance_size)){
         cout << "->Error: incorrect attendance_size format" << endl;
         return;
     }
     //diretório onde se encontra o asset
-    string filename="Client/ASSETS/" + asset;
+    //string filename="Client/ASSETS/" + asset;
+    //Assumindo que trabalhamos desde a pasta Client
+    string filename="ASSETS/" + asset;
     //verificar se o asset existe
-    ifstream file(filename);
+    ifstream file(filename, ios::binary);
     if(!file){
         cout << "->Error: asset file does not exist" << endl;
         return;
@@ -312,7 +320,7 @@ void create_cmd(string UID, string password, TCPuser tcp, string inputs){
     file.close();
     //mensagem a enviar ao servidor
     string message = "CRE " + UID + " " + password + " " +
-     name + " " + event_date + " " + attendance_size + " " + asset + " " + fsize + " " + fdata + "\n";
+     name + " " + event_date + " " + event_hour + " " + attendance_size + " " + asset + " " + fsize + " " + fdata + "\n";
 
     string response = tcp.server_connect(message);
     //verificar se houve erro na conexão
@@ -534,7 +542,7 @@ void show_cmd(TCPuser tcp, string inputs){
 
         cout << "->Event owner: " << owner << endl;
         cout << "->Event name: " << name << endl;
-        cout << "->Event date: " << event_date << endl;
+        cout << "->Event date: " << event_date << " " << event_hour << endl;
         cout << "->Attendance size: " << attendance << endl;
         cout << "->Seats reserved: " << reserved << endl;
         cout << "->File saved: " << fname << endl;
