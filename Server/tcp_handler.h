@@ -1,4 +1,18 @@
-#include "ES.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <stdbool.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <ctype.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include <ctype.h>
 
 #define UID_SIZE 6
