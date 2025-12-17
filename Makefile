@@ -1,48 +1,42 @@
 # Compilers e flags
 CXX = g++
-CC = gcc
+CC  = gcc
 CXXFLAGS = -Wall -Wextra -std=c++11 -g
-CFLAGS = -Wall -Wextra -std=c99 -g
+CFLAGS   = -Wall -Wextra -std=c99 -g
 
+# Diretórios
 CLIENT_DIR = Client
 SERVER_DIR = Server
-BUILD_DIR  = build
 
 # Ficheiros
 CLIENT_SOURCES = $(CLIENT_DIR)/User.cpp
 SERVER_SOURCES = $(SERVER_DIR)/ES.c
 
-CLIENT_OBJS = $(BUILD_DIR)/User.o
-SERVER_OBJS = $(BUILD_DIR)/ES.o
+CLIENT_OBJS = $(CLIENT_DIR)/User.o
+SERVER_OBJS = $(SERVER_DIR)/ES.o
 
-CLIENT_EXEC = $(BUILD_DIR)/client
-SERVER_EXEC = $(BUILD_DIR)/server
+CLIENT_EXEC = $(CLIENT_DIR)/client
+SERVER_EXEC = $(SERVER_DIR)/ES
 
 all: $(CLIENT_EXEC) $(SERVER_EXEC)
 
-$(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)
-
-$(CLIENT_EXEC): $(CLIENT_OBJS) | $(BUILD_DIR)
+# ---- Client ----
+$(CLIENT_EXEC): $(CLIENT_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 	@echo "Client built: $@"
 
-$(SERVER_EXEC): $(SERVER_OBJS) | $(BUILD_DIR)
+$(CLIENT_DIR)/User.o: $(CLIENT_DIR)/User.cpp $(CLIENT_DIR)/User.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# ---- Server ----
+$(SERVER_EXEC): $(SERVER_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 	@echo "Server built: $@"
 
-$(BUILD_DIR)/User.o: $(CLIENT_DIR)/User.cpp $(CLIENT_DIR)/User.h | $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/ES.o: $(SERVER_DIR)/ES.c $(SERVER_DIR)/ES.h | $(BUILD_DIR)
+$(SERVER_DIR)/ES.o: $(SERVER_DIR)/ES.c $(SERVER_DIR)/ES.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-
+# ---- Clean ----
 clean:
-	rm -rf $(BUILD_DIR)
-
-# run-client: $(CLIENT_EXEC)
-#	./$(CLIENT_EXEC)
-
-# run-server: $(SERVER_EXEC)
-#	./$(SERVER_EXEC)
+	rm -f $(CLIENT_DIR)/*.o $(SERVER_DIR)/*.o \
+	      $(CLIENT_EXEC) $(SERVER_EXEC)
