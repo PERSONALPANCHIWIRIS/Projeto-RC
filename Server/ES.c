@@ -108,7 +108,7 @@ void handle_udp(int udp_fd) {
     buffer[n] = '\0'; //recvfrom lê tudo de uma vez
     
     //IP e port do client.
-    if (verbose) printf("[UDP] Received: %s, IP: %s\n, Port: %d\n", buffer, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    if (verbose) printf("[UDP] Received: %s IP: %s\n Port: %d\n", buffer, inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
     char command[4];
     sscanf(buffer, "%3s", command);
@@ -160,19 +160,30 @@ void handle_tcp(int tcp_fd) {
     if (connect_fd < 0) return;
 
     char line[MAX_COMMAND];
-    ssize_t n = read_line(connect_fd, line, sizeof(line));
+    char cmd[MAX_CMD] = {0};
+    
 
-    if (n <= 0) {
-        close(connect_fd);
-        return;
+    read(connect_fd, cmd, 3); //para identificar se é CRE ou outro
+    cmd[3] = '\0';
+    if (strncmp(cmd, "CRE", 3) == 0) {
+        
     }
+    else{
+        strncpy(line, cmd, 3);
+        ssize_t n = read_line(connect_fd, line + 3, sizeof(line) - 3);
 
-    if (verbose) printf("[TCP] Received: %s", line);
+        if (n <= 0) {
+            close(connect_fd);
+            return;
+        }
 
-    //Parse da linha
-    parse_tcp_command(line, connect_fd);
+        if (verbose) printf("[TCP] Received: %s", line);
 
-    close(connect_fd);
+        //Parse da linha
+        parse_tcp_command(line, connect_fd);
+
+        close(connect_fd);
+    }
 
     // CRE -> create event
     // CLS -> close
@@ -188,26 +199,36 @@ ssize_t read_line(int fd, char *buffer, size_t maxlen) {
     size_t total = 0;
 
     while (total < maxlen - 1) {
-        char c;
-        ssize_t n = read(fd, &c, 1);
+        size_t space_left = maxlen - 1 - total;
+        //char c;
+        //ssize_t n = read(fd, &c, 1);
+        ssize_t n = read(fd, buffer + total, space_left);
+        
 
         if (n <= 0) {  //erro ou desligaram
+            if (errno == EINTR) continue;   //retry
             return -1;
         }
-
-        buffer[total] = c;
-        total++;
-
-        if (c == '\n'){
+        if (n == 0) {                       //EOF
             break;
         }
+
+        // look for newline in the newly read block
+        char *newline = memchr(buffer + total, '\n', n);
+        if (newline) {
+            size_t used = (newline - (buffer + total)) + 1; // include '\n'
+            total += used;
+            break;
+        }
+
+        total += n;
     }
 
     buffer[total] = '\0';
     return total;
 }
 
-void parse_tcp_command(const char *line, int connect_fd) {
+void parse_tcp_command(char *line, int connect_fd) {
     //Le o comando, e executa a ação correspondente
     //Deve utilizar read, write
     //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções especificas para cada caso
@@ -220,9 +241,9 @@ void parse_tcp_command(const char *line, int connect_fd) {
 
     if (strcmp(cmd, "CRE") == 0) {
         // create (criar evento)
-        handle_cre(line + MAX_CMD, connect_fd); // Passar os argumentos sem o comando
+        handle_cre(connect_fd, line, strlen(line)); // Passar os argumentos sem o comando
 
-    } else if (strcmp(cmd, "CLS") == 0) {
+    } /* else if (strcmp(cmd, "CLS") == 0) {
         // close (fechar evento)
         handle_cls(line + MAX_CMD, connect_fd);
 
@@ -230,11 +251,12 @@ void parse_tcp_command(const char *line, int connect_fd) {
         // list (mostrar eventos)
         handle_lst(line + MAX_CMD, connect_fd);
 
-    } else if (strcmp(cmd, "SED") == 0) {
+    } */ else if (strcmp(cmd, "SED") == 0) {
         // show (dar ficheiro de evento)
-        handle_sed(line + MAX_CMD, connect_fd);
+        printf("[TCP] Handling SED command\n");
+        handle_sed(connect_fd, line);
 
-    } else if (strcmp(cmd, "RID") == 0) {
+    } /* else if (strcmp(cmd, "RID") == 0) {
         // reserve (fazer reserva)
         handle_rid(line + MAX_CMD, connect_fd);
 
@@ -242,7 +264,7 @@ void parse_tcp_command(const char *line, int connect_fd) {
         // changePass (mudar passe)
         handle_cps(line + MAX_CMD, connect_fd);
 
-    } else {
+    } */ else {
         // Comando desconhecido
         const char *reply = "ERR\n";
         write(connect_fd, reply, strlen(reply));

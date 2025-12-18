@@ -291,7 +291,8 @@ public:
         }
 
         //Envio de mensagem para o servidor destino
-        int w_n = send(fd, message.c_str(), message.size(), 0);
+        //int w_n = send(fd, message.c_str(), message.size(), 0);
+        int w_n = write(fd, message.c_str(), message.size());
         //Verificação de erros no envio de mensagem
         if (w_n == -1) {
             cout << "->Error sending message" << std::endl;

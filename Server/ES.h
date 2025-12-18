@@ -49,7 +49,7 @@ typedef struct event_list{
 void handle_udp(int udp_fd);
 void handle_tcp(int tcp_fd);
 ssize_t read_line(int fd, char *buffer, size_t maxlen);
-void parse_tcp_command(const char *line, int connect_fd);
+void parse_tcp_command(char *line, int connect_fd);
 bool dir_exists(const char *path);
 void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len);
 void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len);
@@ -245,7 +245,7 @@ int check_future_event(const char *eid_str);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-int handle_cre(const char *args, int connect_fd);
+int handle_cre(int conn_fd, char *header_buffer, int bytes_read);
 
 /**
  * Handle the CLS command to close an event
@@ -253,7 +253,7 @@ int handle_cre(const char *args, int connect_fd);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-int handle_cls(const char *args, int connect_fd);
+//int handle_cls(const char *args, int connect_fd);
 
 /**
  * Handle the LST command to list events
@@ -261,7 +261,7 @@ int handle_cls(const char *args, int connect_fd);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-int handle_lst(const char *args, int connect_fd);
+//int handle_lst(const char *args, int connect_fd);
 
 /**
  * Handle the SED command to send event data
@@ -269,7 +269,7 @@ int handle_lst(const char *args, int connect_fd);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-int handle_sed(const char *args, int connect_fd);
+//int handle_sed(const char *args, int connect_fd);
 
 /**
  * Handle the RID command to make a reservation
@@ -277,7 +277,7 @@ int handle_sed(const char *args, int connect_fd);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-int handle_rid(const char *args, int connect_fd);
+//int handle_rid(const char *args, int connect_fd);
 
 /**
  * Handle the CPS command to change password
@@ -285,4 +285,4 @@ int handle_rid(const char *args, int connect_fd);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-int handle_cps(const char *args, int connect_fd);
+//int handle_cps(const char *args, int connect_fd);
