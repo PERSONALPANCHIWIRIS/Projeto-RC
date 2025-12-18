@@ -253,8 +253,8 @@ void parse_tcp_command(char *line, int connect_fd) {
 
     } */ else if (strcmp(cmd, "SED") == 0) {
         // show (dar ficheiro de evento)
-        printf("[TCP] Handling SED command\n");
-        handle_sed(connect_fd, line);
+        //printf("[TCP] Handling SED command\n");
+        handle_sed(connect_fd, line + MAX_CMD);
 
     } /* else if (strcmp(cmd, "RID") == 0) {
         // reserve (fazer reserva)

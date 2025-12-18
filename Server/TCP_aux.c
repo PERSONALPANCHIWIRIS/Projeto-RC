@@ -73,12 +73,16 @@ int get_event_meta(const char *eid, EventMeta *meta) {
 
     snprintf(path, sizeof(path), "EVENTS/%s/START_%s.txt", eid, eid);
     fp = fopen(path, "r");
-    if (!fp) return 0;
+    if (!fp) {
+        printf("Failed to open event meta file %s\n", path);
+        return 0;
+    }
 
     // Formato: UID name fname att_size date time
     if (fscanf(fp, "%s %s %s %d %s %s", 
         meta->uid, meta->name, meta->fname, &meta->att_size, date_part, time_part) != 6) {
         fclose(fp);
+        printf("Failed to read event meta from %s\n", path);
         return 0;
     }
     fclose(fp);
@@ -359,10 +363,14 @@ int handle_sed(int conn_fd, const char *args) {
     if (sscanf(args, "%s", eid) != 1) { send_reply(conn_fd, "RSE", "ERR", NULL); return 0; }
 
     char path[64]; snprintf(path, sizeof(path), "EVENTS/%s", eid);
+    //printf("Checking if event %s exists at path %s\n", eid, path); // Debug
     if (!dir_exists(path)) { send_reply(conn_fd, "RSE", "NOK", NULL); return 0; }
+    //printf("Event %s exists.\n", eid); // Debug
 
     EventMeta meta;
     if (!get_event_meta(eid, &meta)) { send_reply(conn_fd, "RSE", "NOK", NULL); return 0; }
+    //printf("Event Meta: UID=%s, Name=%s, Fname=%s, Date=%s, Att_size=%d\n", 
+    //    meta.uid, meta.name, meta.fname, meta.date, meta.att_size); // Debug
 
     int reserved = get_reservations_count(eid);
     
@@ -377,6 +385,7 @@ int handle_sed(int conn_fd, const char *args) {
     snprintf(header, sizeof(header), "RSE OK %s %s %s %d %d %s %d ", 
         meta.uid, meta.name, meta.date, meta.att_size, reserved, meta.fname, fsize);
     
+    //printf("Sending header: %s\n", header); // Debug
     write(conn_fd, header, strlen(header));
 
     // Enviar conteúdo do ficheiro
