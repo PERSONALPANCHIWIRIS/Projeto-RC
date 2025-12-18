@@ -163,11 +163,108 @@ void handle_tcp(int tcp_fd) {
     char cmd[MAX_CMD] = {0};
     
 
-    read(connect_fd, cmd, 3); //para identificar se é CRE ou outro
+    ssize_t n = read(connect_fd, cmd, 3); //para identificar se é CRE ou outro
+    if (n <= 0 || n != 3) { //Erro qualquer
+        close(connect_fd);
+        return;
+    }
+
     cmd[3] = '\0';
     if (strncmp(cmd, "CRE", 3) == 0) {
+        char uid[7], pass[9], name[11], date[11], time[6], fname[25];
+        int attendance;
+        ssize_t fsize;
+        char header_part[512];
+        int i = 0, spaces = 0;
+
+        //Byte por byte
+        while (spaces < 9 && i < (int)sizeof(header_part) - 1) {
+            if (read(connect_fd, &header_part[i], 1) <= 0) break;
+            if (header_part[i] == ' ') spaces++;
+            i++;
+        }
+        header_part[i] = '\0';
+
+        if (sscanf(header_part, "%s %s %s %s %s %d %s %zd", 
+            uid, pass, name, date, time, &attendance, fname, &fsize) != 8) {
+            const char* reply = "RCE ERR\n";
+            write(connect_fd, reply, strlen(reply));
+            close(connect_fd);
+            return;
+        }
+
+        int u_status = check_uid(uid);
+        if (u_status == -1) { send_reply(connect_fd, "RCE", "NLG", NULL); return; }
+        if (u_status == -2) { send_reply(connect_fd, "RCE", "ERR", NULL); return; } 
+        if (check_pwd(uid, pass) != 1) { send_reply(connect_fd, "RCE", "WRP", NULL); return; }
+        if (fsize > MAX_F_SIZE || fsize < 0) { send_reply(connect_fd, "RCE", "NOK", NULL); return; }
+
+        if (verbose) printf("[TCP] Received CRE: %s uid: %s, size: %zd\n", name, uid, fsize);
+
+        // Criar Estrutura de Diretórios
+        int eid = 1;
+        char eid_str[4];
+        char path[200];
         
+        // Encontrar EID livre (001 a 999)
+        while (eid <= 999) {
+            snprintf(eid_str, sizeof(eid_str), "%03d", eid);
+            snprintf(path, sizeof(path), "EVENTS/%s", eid_str);
+            if (mkdir(path, 0700) == 0) break; 
+            eid++;
+        }
+        if (eid > 999) { send_reply(connect_fd, "RCE", "NOK", NULL); return; }
+
+        // Criar subdiretorias obrigatórias
+        char path_desc[128], path_resv[128];
+        snprintf(path_desc, sizeof(path_desc), "EVENTS/%s/DESCRIPTION", eid_str);
+        snprintf(path_resv, sizeof(path_resv), "EVENTS/%s/RESERVATIONS", eid_str);
+        mkdir(path_desc, 0700);
+        mkdir(path_resv, 0700);
+
+        char *file_buffer = malloc(fsize);
+        if (!file_buffer) {
+            send_reply(connect_fd, "RCE", "NOK", NULL);
+            close(connect_fd);
+            return;
+        }
+
+        read_tcp_fdata(connect_fd, file_buffer, fsize);
+
+        snprintf(path, sizeof(path), "%s/%s", path_desc, fname);
+        int fd_file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
+        
+        if (fd_file < 0) { send_reply(connect_fd, "RCE", "NOK", NULL); return; }
+
+        write(fd_file, file_buffer, fsize);
+        close(fd_file);
+        // Criar ficheiro START e atualizar diretoria do User
+        snprintf(path, sizeof(path), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
+        FILE *fp = fopen(path, "w");
+        if (fp) {
+            fprintf(fp, "%s %s %s %d %s %s\n", uid, name, fname, attendance, date, time);
+            fclose(fp);
+        }
+
+        // Criar ficheiro RES (Contador) a 0
+        snprintf(path, sizeof(path), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
+        fp = fopen(path, "w");
+        if (fp) { fprintf(fp, "0\n"); fclose(fp); }
+
+        // Adicionar ficheiro vazio na pasta CREATED do User para indexação rápida
+        snprintf(path, sizeof(path), "USERS/%s/CREATED/%s.txt", uid, eid_str);
+        fp = fopen(path, "w");
+        //if (fp) fclose(fp); // Apenas criar o ficheiro
+        if (fp) { //Podemos até guardar alguma coisa
+            fprintf(fp, "%s %s %s %d %s %s\n", uid, name, fname, attendance, date, time);
+            fclose(fp);
+        }
+
+        send_reply(connect_fd, "RCE", "OK", eid_str);
+        close(connect_fd);
+        return;
     }
+        
     else{
         strncpy(line, cmd, 3);
         ssize_t n = read_line(connect_fd, line + 3, sizeof(line) - 3);
@@ -228,10 +325,29 @@ ssize_t read_line(int fd, char *buffer, size_t maxlen) {
     return total;
 }
 
+ssize_t read_tcp_fdata(int fd, char* buffer, ssize_t fsize) {
+    ssize_t total = 0;
+    while (total < fsize) {
+        ssize_t res = read(fd, buffer + total, fsize - total);
+        //printf("Read %zd bytes, total so far %zd/%zd\n", res, total, fsize); // Debug
+        if (res > 0) {
+            total += res;
+        } 
+
+        else if (res == 0) {//Fechou cedo, ou antes já foi alguma metadata
+            return total;  
+        } 
+        else {
+            return -1; //erro
+        }
+    }
+    return total;
+}
+
 void parse_tcp_command(char *line, int connect_fd) {
     //Le o comando, e executa a ação correspondente
     //Deve utilizar read, write
-    //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções especificas para cada caso
+    //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções específicas para cada caso
     //Se está no modo verbose, pritar sempre o que está a ser executado
     
     // Extrair command da mensagem
@@ -241,7 +357,7 @@ void parse_tcp_command(char *line, int connect_fd) {
 
     if (strcmp(cmd, "CRE") == 0) {
         // create (criar evento)
-        handle_cre(connect_fd, line, strlen(line)); // Passar os argumentos sem o comando
+        handle_cre(connect_fd, line, strlen(line)); 
 
     } /* else if (strcmp(cmd, "CLS") == 0) {
         // close (fechar evento)

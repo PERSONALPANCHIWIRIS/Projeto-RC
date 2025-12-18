@@ -280,7 +280,7 @@ public:
         }
 
         struct timeval tv;
-        tv.tv_sec = 5; // 5 seconds
+        tv.tv_sec = 15; // 15 seconds
         tv.tv_usec = 0;
 
         //Configuração do timeout para o socket receção

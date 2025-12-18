@@ -49,6 +49,7 @@ typedef struct event_list{
 void handle_udp(int udp_fd);
 void handle_tcp(int tcp_fd);
 ssize_t read_line(int fd, char *buffer, size_t maxlen);
+ssize_t read_tcp_fdata(int fd, char* buffer, ssize_t fsize);
 void parse_tcp_command(char *line, int connect_fd);
 bool dir_exists(const char *path);
 void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len);

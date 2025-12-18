@@ -154,7 +154,7 @@ void get_current_datetime_str(char *buffer) {
 // ============================================================================
 
 // --- CREATE EVENT (CRE) ---
-int handle_cre(int conn_fd, char *header_buffer, int bytes_read) {
+/* int handle_cre(int conn_fd, char *header_buffer, int bytes_read) {
     char uid[UID_SIZE+1], pwd[PWD_SIZE+1], name[E_NAME_SIZE+1];
     char date[11], time_str[6], fname[F_NAME_SIZE+1];
     int att, fsize;
@@ -163,6 +163,7 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read) {
     // O sscanf para antes dos dados binários se houver um espaço após o número.
     int parsed = sscanf(header_buffer, "CRE %s %s %s %s %s %d %s %d", 
         uid, pwd, name, date, time_str, &att, fname, &fsize);
+
 
     if (parsed != 8) {
         send_reply(conn_fd, "RCE", "ERR", NULL);
@@ -182,6 +183,7 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read) {
     
     // Se o header lido for menor que o esperado, algo correu mal na leitura inicial
     if (bytes_read < prefix_len) {
+        //printf("Header too short: expected %d, got %d\n", prefix_len, bytes_read);
         send_reply(conn_fd, "RCE", "ERR", NULL);
         return 0;
     }
@@ -258,7 +260,7 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read) {
 
     send_reply(conn_fd, "RCE", "OK", eid_str);
     return 1;
-}
+} */
 
 // --- CLOSE EVENT (CLS) ---
 /* int handle_cls(int conn_fd, const char *args) {
