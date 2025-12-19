@@ -189,6 +189,15 @@ void handle_tcp(int tcp_fd) {
             return;
         }
 
+        int day, month, year, hour, minute;
+        sscanf(date, "%d-%d-%d", &day, &month, &year);
+        sscanf(time, "%d:%d", &hour, &minute);
+        if (!check_event_date(day, month, year, hour, minute)) {
+            send_reply(connect_fd, "RCE", "NOK", NULL);
+            close(connect_fd);
+            return;
+        }
+
         int u_status = check_uid(uid);
         if (u_status == -1) { send_reply(connect_fd, "RCE", "NLG", NULL); return; }
         if (u_status == -2) { send_reply(connect_fd, "RCE", "ERR", NULL); return; } 
@@ -242,16 +251,6 @@ void handle_tcp(int tcp_fd) {
         if (fp) {
             fprintf(fp, "%s %s %s %d %s %s\n", uid, name, fname, attendance, date, time);
             fclose(fp);
-        }
-
-        int day, month, year, hour, minute;
-        sscanf(date, "%d-%d-%d", &day, &month, &year);
-        sscanf(time, "%d:%d", &hour, &minute);
-        if (!check_event_date(day, month, year, hour, minute)) {
-            free(file_buffer);
-            send_reply(connect_fd, "RCE", "NOK", NULL);
-            close(connect_fd);
-            return;
         }
         
         // Criar ficheiro RES (Contador) a 0
