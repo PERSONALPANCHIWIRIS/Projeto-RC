@@ -244,6 +244,16 @@ void handle_tcp(int tcp_fd) {
             fclose(fp);
         }
 
+        int day, month, year, hour, minute;
+        sscanf(date, "%d-%d-%d", &day, &month, &year);
+        sscanf(time, "%d:%d", &hour, &minute);
+        if (!check_event_date(day, month, year, hour, minute)) {
+            free(file_buffer);
+            send_reply(connect_fd, "RCE", "NOK", NULL);
+            close(connect_fd);
+            return;
+        }
+        
         // Criar ficheiro RES (Contador) a 0
         snprintf(path, sizeof(path), "Server/EVENTS/%s/RES_%s.txt", eid_str, eid_str);
         fp = fopen(path, "w");
