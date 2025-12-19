@@ -503,11 +503,11 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             /* char *reservations_path = NULL;
             asprintf(&reservations_path, "%s/RESERVATIONS", current->event_path); */
 
-            int needed_reservations = snprintf(NULL, 0, "%s/RESERVATIONS", current->event_path);
+            int needed_reservations = snprintf(NULL, 0, "%s/RES_%s.txt", current->event_path, current->eid);
             char *reservations_path = malloc(needed_reservations + 1);
-            snprintf(reservations_path, needed_reservations + 1, "%s/RESERVATIONS", current->event_path);
+            snprintf(reservations_path, needed_reservations + 1, "%s/RES_%s.txt", current->event_path, current->eid);
 
-            DIR *res_dir = opendir(reservations_path);
+            /* DIR *res_dir = opendir(reservations_path);
             struct dirent *entry;
             int n_reservations = 0;
             while ((entry = readdir(res_dir)) != NULL) {
@@ -517,7 +517,14 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
                 }
                 n_reservations++;
             }
-            closedir(res_dir);
+            closedir(res_dir); */
+
+            FILE *fres = fopen(reservations_path, "r");
+            int n_reservations = 0;
+            char line[256];
+            fgets(line, sizeof(line), fres);
+            n_reservations = atoi(line);
+            fclose(fres);
             free(reservations_path);
             if (n_reservations >= event_attend) {
                 //Evento cheio
