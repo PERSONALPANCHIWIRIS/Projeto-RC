@@ -18,7 +18,8 @@ Projeto desenvolvido pelo grupo 038 do turno L06 que implementa um sistema clien
     └─ EVENTS/ # Diretórios criados dinamicamente
 
 Para gerar os excutaveis: 'make'. Os mesmos serão criados na mesma diretoria que o makefile. 
-'make clean' para limpar todos os arquivo objeto e executaveis
+'make clean' para limpar todos os arquivo objeto e executaveis.
+'make db_clean limpa a base de dados do projeto.
 
  - Iniciar o servidor:
 ./ES [-p <port>] [-v]

@@ -41,3 +41,11 @@ $(SERVER_DIR)/ES.o: $(SERVER_DIR)/ES.c $(SERVER_DIR)/ES.h
 clean:
 	rm -f $(CLIENT_DIR)/*.o $(SERVER_DIR)/*.o \
 	      $(CLIENT_EXEC) $(SERVER_EXEC)
+
+db_clean:
+	rm -rf Server/USERS
+	rm -rf Server/EVENTS
+	mkdir Server/USERS
+	mkdir Server/EVENTS
+	rm -rf Client/SHOW
+	mkdir Client/SHOW
