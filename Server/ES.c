@@ -372,15 +372,18 @@ void parse_tcp_command(char *line, int connect_fd) {
         //printf("[TCP] Handling SED command\n");
         handle_sed(connect_fd, line + MAX_CMD);
 
-    } /* else if (strcmp(cmd, "RID") == 0) {
+    }
+    else if (strcmp(cmd, "RID") == 0) {
         // reserve (fazer reserva)
-        handle_rid(line + MAX_CMD, connect_fd);
+        handle_rid(connect_fd, line + MAX_CMD);
 
-    } else if (strcmp(cmd, "CPS") == 0) {
+    }
+    /* else if (strcmp(cmd, "CPS") == 0) {
         // changePass (mudar passe)
         handle_cps(line + MAX_CMD, connect_fd);
 
-    } */ else {
+    } */
+    else {
         // Comando desconhecido
         const char *reply = "ERR\n";
         write(connect_fd, reply, strlen(reply));

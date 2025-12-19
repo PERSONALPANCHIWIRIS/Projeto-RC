@@ -405,7 +405,7 @@ int handle_sed(int conn_fd, const char *args) {
 }
 
 // --- RESERVE (RID) ---
-/* int handle_rid(int conn_fd, const char *args) {
+int handle_rid(int conn_fd, const char *args) {
     char uid[UID_SIZE+1], pwd[PWD_SIZE+1], eid[EID_SIZE+1];
     int places;
 
@@ -455,8 +455,8 @@ int handle_sed(int conn_fd, const char *args) {
     time_t t = time(NULL);
     struct tm *tm = localtime(&t);
     char date_content[32];
-    sprintf(date_content, "%02d-%02d-%04d %02d:%02d:%02d", 
-        tm->tm_mday, tm->tm_mon+1, tm->tm_year+1900, tm->tm_hour, tm->tm_min, tm->tm_sec);
+    snprintf(date_content, sizeof(date_content), "%02d-%02d-%04d %02d:%02d:%02d", 
+        (unsigned)tm->tm_mday, (unsigned)tm->tm_mon+1, (unsigned)tm->tm_year+1900, (unsigned)tm->tm_hour, (unsigned)tm->tm_min, (unsigned)tm->tm_sec);
 
     // 3. Ficheiro em EVENTS (Formato: UID places date)
     // Nome: R-<uid>-<timestamp>.txt
@@ -483,7 +483,7 @@ int handle_sed(int conn_fd, const char *args) {
 
     send_reply(conn_fd, "RRI", "ACC", NULL);
     return 1;
-} */
+}
 
 // --- CHANGE PASSWORD (CPS) ---
 /* int handle_cps(int conn_fd, const char *args) { 
