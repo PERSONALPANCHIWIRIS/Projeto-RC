@@ -568,7 +568,7 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
     //asprintf(&reply, "%s\n", reply);
     size_t len = strlen(reply);
     if(len > 0 && reply[len - 1] == ' '){
-        reply[len - 1] = '\0'; //Remover espaço extra
+        reply[len - 1] = '\0'; 
     }
     int needed_final = snprintf(NULL, 0, "%s\n", reply);
     char *final_reply = malloc(needed_final + 1);
@@ -822,7 +822,10 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         return;
     }
     /* asprintf(&reply, "%s\n", reply) */;
-
+    size_t len = strlen(reply);
+    if(len > 0 && reply[len - 1] == ' '){
+        reply[len - 1] = '\0'; 
+    }
     int neede_final = snprintf(NULL, 0, "%s\n", reply);
     char *final_reply = malloc(neede_final + 1);
     snprintf(final_reply, neede_final + 1, "%s\n", reply);
