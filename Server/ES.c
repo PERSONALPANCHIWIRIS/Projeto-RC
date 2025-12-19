@@ -378,11 +378,11 @@ void parse_tcp_command(char *line, int connect_fd) {
         handle_rid(connect_fd, line + MAX_CMD);
 
     }
-    /* else if (strcmp(cmd, "CPS") == 0) {
+    else if (strcmp(cmd, "CPS") == 0) {
         // changePass (mudar passe)
-        handle_cps(line + MAX_CMD, connect_fd);
+        handle_cps( connect_fd, line + MAX_CMD);
 
-    } */
+    }
     else {
         // Comando desconhecido
         const char *reply = "ERR\n";

@@ -486,7 +486,7 @@ int handle_rid(int conn_fd, const char *args) {
 }
 
 // --- CHANGE PASSWORD (CPS) ---
-/* int handle_cps(int conn_fd, const char *args) { 
+int handle_cps(int conn_fd, const char *args) { 
     char uid[UID_SIZE+1], old_p[PWD_SIZE+1], new_p[PWD_SIZE+1];
     if (sscanf(args, "%s %s %s", uid, old_p, new_p) != 3) {
         send_reply(conn_fd, "RCP", "ERR", NULL); return 0;
@@ -509,4 +509,4 @@ int handle_rid(int conn_fd, const char *args) {
         send_reply(conn_fd, "RCP", "ERR", NULL);
     }
     return 1;
-} */
+}
