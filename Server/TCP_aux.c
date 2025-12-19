@@ -263,7 +263,7 @@ void get_current_datetime_str(char *buffer) {
 } */
 
 // --- CLOSE EVENT (CLS) ---
-/* int handle_cls(int conn_fd, const char *args) {
+int handle_cls(int conn_fd, const char *args) {
     char uid[UID_SIZE+1], pwd[PWD_SIZE+1], eid[EID_SIZE+1];
     
     if (sscanf(args, "%s %s %s", uid, pwd, eid) != 3) {
@@ -306,7 +306,7 @@ void get_current_datetime_str(char *buffer) {
         send_reply(conn_fd, "RCL", "NOK", NULL);
     }
     return 1;
-} */
+}
 
 // --- LIST EVENTS (LST) ---
 /* int handle_lst(int conn_fd) {

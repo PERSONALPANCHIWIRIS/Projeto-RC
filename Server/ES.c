@@ -346,28 +346,28 @@ ssize_t read_tcp_fdata(int fd, char* buffer, ssize_t fsize) {
 
 void parse_tcp_command(char *line, int connect_fd) {
     //Le o comando, e executa a ação correspondente
-    //Deve utilizar read, write
-    //Switch case -> strcmp nos primeiros 3 caracteres e chamamos funções específicas para cada caso
-    //Se está no modo verbose, pritar sempre o que está a ser executado
     
     // Extrair command da mensagem
     char cmd[MAX_CMD] = {0};
     strncpy(cmd, line, 3);
     cmd[3] = '\0';
 
-    if (strcmp(cmd, "CRE") == 0) {
+    /* if (strcmp(cmd, "CRE") == 0) {
         // create (criar evento)
         handle_cre(connect_fd, line, strlen(line)); 
 
-    } /* else if (strcmp(cmd, "CLS") == 0) {
+    } */ 
+    if (strcmp(cmd, "CLS") == 0) {
         // close (fechar evento)
-        handle_cls(line + MAX_CMD, connect_fd);
+        handle_cls( connect_fd, line + MAX_CMD);
 
-    } else if (strcmp(cmd, "LST") == 0) {
+    } 
+    /* else if (strcmp(cmd, "LST") == 0) {
         // list (mostrar eventos)
         handle_lst(line + MAX_CMD, connect_fd);
 
-    } */ else if (strcmp(cmd, "SED") == 0) {
+    }  */
+    else if (strcmp(cmd, "SED") == 0) {
         // show (dar ficheiro de evento)
         //printf("[TCP] Handling SED command\n");
         handle_sed(connect_fd, line + MAX_CMD);
