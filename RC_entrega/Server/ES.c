@@ -229,7 +229,9 @@ void handle_tcp(int tcp_fd) {
             return;
         }
 
+        char line_n[2];
         read_tcp_fdata(connect_fd, file_buffer, fsize);
+        read(connect_fd, line_n, sizeof(line_n)); //Ler o \n final
 
         snprintf(path, sizeof(path), "%s/%s", path_desc, fname);
         int fd_file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
@@ -333,7 +335,6 @@ ssize_t read_tcp_fdata(int fd, char* buffer, ssize_t fsize) {
         if (res > 0) {
             total += res;
         } 
-
         else if (res == 0) {//Fechou cedo, ou antes já foi alguma metadata
             return total;  
         } 
