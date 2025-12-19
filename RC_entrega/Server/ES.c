@@ -114,14 +114,12 @@ void handle_udp(int udp_fd) {
     sscanf(buffer, "%3s", command);
 
         if (strcmp(command, "LIN") == 0) {
-            //if (verbose) printf("[UDP] Received: %s", buffer);
             //chamar função login
             login_user(buffer, udp_fd, client_addr, client_len);
         }
 
         else if (strcmp(command, "LOU") == 0) {
             //chamar função logout
-            //No lado do user já verifica se está logged in
             logout_user(buffer, udp_fd, client_addr, client_len);
         }
 
@@ -141,8 +139,6 @@ void handle_udp(int udp_fd) {
         }
 
         else{
-            //char* reply = NULL; 
-            //asprintf(&reply, "[UDP] Unknown command: %s\n", command);
             int needed = snprintf(NULL, 0, "[UDP] Unknown command: %s\n", command);
             char *reply = malloc(needed + 1);
             snprintf(reply, needed + 1, "[UDP] Unknown command: %s\n", command);
@@ -256,7 +252,7 @@ void handle_tcp(int tcp_fd) {
         // Adicionar ficheiro vazio na pasta CREATED do User para indexação rápida
         snprintf(path, sizeof(path), "Server/USERS/%s/CREATED/%s.txt", uid, eid_str);
         fp = fopen(path, "w");
-        //if (fp) fclose(fp); // Apenas criar o ficheiro
+        // Apenas criar o ficheiro
         if (fp) { //Podemos até guardar alguma coisa
             fprintf(fp, "%s %s %s %d %s %s\n", uid, name, fname, attendance, date, time);
             fclose(fp);
@@ -291,7 +287,6 @@ void handle_tcp(int tcp_fd) {
     // RID -> reserve
     // CPS -> changePassword
 
-    //sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
 }
 
 ssize_t read_line(int fd, char *buffer, size_t maxlen) {
@@ -299,8 +294,6 @@ ssize_t read_line(int fd, char *buffer, size_t maxlen) {
 
     while (total < maxlen - 1) {
         size_t space_left = maxlen - 1 - total;
-        //char c;
-        //ssize_t n = read(fd, &c, 1);
         ssize_t n = read(fd, buffer + total, space_left);
         
 
@@ -312,10 +305,9 @@ ssize_t read_line(int fd, char *buffer, size_t maxlen) {
             break;
         }
 
-        // look for newline in the newly read block
         char *newline = memchr(buffer + total, '\n', n);
         if (newline) {
-            size_t used = (newline - (buffer + total)) + 1; // include '\n'
+            size_t used = (newline - (buffer + total)) + 1; //incluir o \n
             total += used;
             break;
         }
@@ -331,7 +323,6 @@ ssize_t read_tcp_fdata(int fd, char* buffer, ssize_t fsize) {
     ssize_t total = 0;
     while (total < fsize) {
         ssize_t res = read(fd, buffer + total, fsize - total);
-        //printf("Read %zd bytes, total so far %zd/%zd\n", res, total, fsize); // Debug
         if (res > 0) {
             total += res;
         } 
@@ -353,11 +344,6 @@ void parse_tcp_command(char *line, int connect_fd) {
     strncpy(cmd, line, 3);
     cmd[3] = '\0';
 
-    /* if (strcmp(cmd, "CRE") == 0) {
-        // create (criar evento)
-        handle_cre(connect_fd, line, strlen(line)); 
-
-    } */ 
     if (strcmp(cmd, "CLS") == 0) {
         // close (fechar evento)
         handle_cls( connect_fd, line + MAX_CMD);

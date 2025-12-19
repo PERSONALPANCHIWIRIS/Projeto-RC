@@ -4,7 +4,7 @@
 // FUNÇÕES AUXILIARES
 // ============================================================================
 
-// Envia resposta formatada para o cliente, garantindo escrita completa
+//Envia resposta formatada para o cliente, garantindo escrita completa
 void send_reply(int conn_fd, const char *head, const char *status, const char *body) {
     char buffer[BUFFER_SIZE];
     if (body) {
@@ -21,17 +21,6 @@ void send_reply(int conn_fd, const char *head, const char *status, const char *b
         written += n;
     }
 }
-
-/* int dir_exists(const char *path) {
-    struct stat st;
-    return (stat(path, &st) == 0 && S_ISDIR(st.st_mode));
-} */
-
-/* bool dir_exists(const char *path) {
-    struct stat st;
-    if (stat(path, &st) != 0) return false;   
-    return S_ISDIR(st.st_mode);                
-} */
 
 // Verifica se UID existe e se está logado (procura ficheiro _login.txt)
 // Retorno: 1 (OK), -1 (Não logado), -2 (Não existe)
@@ -86,7 +75,6 @@ int get_event_meta(const char *eid, EventMeta *meta) {
         return 0;
     }
     fclose(fp);
-    //snprintf(meta->date, sizeof(meta->date), "%s %s", date_part, time_part);
     snprintf(meta->date, sizeof(meta->date), "%.10s %.5s", date_part, time_part);
     return 1;
 }
@@ -152,115 +140,6 @@ void get_current_datetime_str(char *buffer) {
 // ============================================================================
 // HANDLERS TCP
 // ============================================================================
-
-// --- CREATE EVENT (CRE) ---
-/* int handle_cre(int conn_fd, char *header_buffer, int bytes_read) {
-    char uid[UID_SIZE+1], pwd[PWD_SIZE+1], name[E_NAME_SIZE+1];
-    char date[11], time_str[6], fname[F_NAME_SIZE+1];
-    int att, fsize;
-    
-    // Parsing do cabeçalho. Note que FSIZE é o último campo de texto.
-    // O sscanf para antes dos dados binários se houver um espaço após o número.
-    int parsed = sscanf(header_buffer, "CRE %s %s %s %s %s %d %s %d", 
-        uid, pwd, name, date, time_str, &att, fname, &fsize);
-
-
-    if (parsed != 8) {
-        send_reply(conn_fd, "RCE", "ERR", NULL);
-        return 0;
-    }
-
-    int u_status = check_uid(uid);
-    if (u_status == -1) { send_reply(conn_fd, "RCE", "NLG", NULL); return 0; }
-    if (u_status == -2) { send_reply(conn_fd, "RCE", "ERR", NULL); return 0; } 
-    if (check_pwd(uid, pwd) != 1) { send_reply(conn_fd, "RCE", "WRP", NULL); return 0; }
-    if (fsize > MAX_F_SIZE || fsize < 0) { send_reply(conn_fd, "RCE", "NOK", NULL); return 0; }
-
-    // Calcular onde começam os dados binários no buffer recebido
-    char temp_prefix[512];
-    int prefix_len = snprintf(temp_prefix, sizeof(temp_prefix), "CRE %s %s %s %s %s %d %s %d ", 
-             uid, pwd, name, date, time_str, att, fname, fsize);
-    
-    // Se o header lido for menor que o esperado, algo correu mal na leitura inicial
-    if (bytes_read < prefix_len) {
-        //printf("Header too short: expected %d, got %d\n", prefix_len, bytes_read);
-        send_reply(conn_fd, "RCE", "ERR", NULL);
-        return 0;
-    }
-
-    // Criar Estrutura de Diretórios
-    int eid = 1;
-    char eid_str[4];
-    char path[200];
-    
-    // Encontrar EID livre (001 a 999)
-    while (eid <= 999) {
-        snprintf(eid_str, sizeof(eid_str), "%03d", eid);
-        snprintf(path, sizeof(path), "EVENTS/%s", eid_str);
-        if (mkdir(path, 0700) == 0) break; 
-        eid++;
-    }
-    if (eid > 999) { send_reply(conn_fd, "RCE", "NOK", NULL); return 0; }
-
-    // Criar subdiretorias obrigatórias
-    char path_desc[128], path_resv[128];
-    snprintf(path_desc, sizeof(path_desc), "EVENTS/%s/DESCRIPTION", eid_str);
-    snprintf(path_resv, sizeof(path_resv), "EVENTS/%s/RESERVATIONS", eid_str);
-    mkdir(path_desc, 0700);
-    mkdir(path_resv, 0700);
-
-    // --- ESCRITA DO FICHEIRO BINÁRIO ---
-    snprintf(path, sizeof(path), "%s/%s", path_desc, fname);
-    int fd_file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0600);
-    
-    if (fd_file < 0) { send_reply(conn_fd, "RCE", "NOK", NULL); return 0; }
-
-    char *data_ptr = header_buffer + prefix_len;
-    int data_in_buffer = bytes_read - prefix_len;
-
-    // 1. Escrever o que sobrou da leitura inicial
-    if (data_in_buffer > 0) {
-        int to_write = (data_in_buffer > fsize) ? fsize : data_in_buffer;
-        write(fd_file, data_ptr, to_write);
-        fsize -= to_write;
-    }
-
-    // 2. Ler o restante do socket num loop até completar fsize
-    char file_buf[BUFFER_SIZE];
-    while (fsize > 0) {
-        int chunk = (fsize > BUFFER_SIZE) ? BUFFER_SIZE : fsize;
-        ssize_t n = read(conn_fd, file_buf, chunk);
-        if (n <= 0) break; // Erro ou conexão fechada prematuramente
-        write(fd_file, file_buf, n);
-        fsize -= n;
-    }
-    close(fd_file);
-
-    // Criar ficheiro START e atualizar diretoria do User
-    snprintf(path, sizeof(path), "EVENTS/%s/START_%s.txt", eid_str, eid_str);
-    FILE *fp = fopen(path, "w");
-    if (fp) {
-        fprintf(fp, "%s %s %s %d %s %s\n", uid, name, fname, att, date, time_str);
-        fclose(fp);
-    }
-
-    // Criar ficheiro RES (Contador) a 0
-    snprintf(path, sizeof(path), "EVENTS/%s/RES_%s.txt", eid_str, eid_str);
-    fp = fopen(path, "w");
-    if (fp) { fprintf(fp, "0\n"); fclose(fp); }
-
-    // Adicionar ficheiro vazio na pasta CREATED do User para indexação rápida
-    snprintf(path, sizeof(path), "USERS/%s/CREATED/%s.txt", uid, eid_str);
-    fp = fopen(path, "w");
-    //if (fp) fclose(fp); // Apenas criar o ficheiro
-    if (fp) { //Podemos até guardar alguma coisa
-        fprintf(fp, "%s %s %s %d %s %s\n", uid, name, fname, att, date, time_str);
-        fclose(fp);
-    }
-
-    send_reply(conn_fd, "RCE", "OK", eid_str);
-    return 1;
-} */
 
 // --- CLOSE EVENT (CLS) ---
 int handle_cls(int conn_fd, const char *args) {
@@ -365,14 +244,10 @@ int handle_sed(int conn_fd, const char *args) {
     if (sscanf(args, "%s", eid) != 1) { send_reply(conn_fd, "RSE", "ERR", NULL); return 0; }
 
     char path[64]; snprintf(path, sizeof(path), "Server/EVENTS/%s", eid);
-    //printf("Checking if event %s exists at path %s\n", eid, path); // Debug
     if (!dir_exists(path)) { send_reply(conn_fd, "RSE", "NOK", NULL); return 0; }
-    //printf("Event %s exists.\n", eid); // Debug
 
     EventMeta meta;
     if (!get_event_meta(eid, &meta)) { send_reply(conn_fd, "RSE", "NOK", NULL); return 0; }
-    //printf("Event Meta: UID=%s, Name=%s, Fname=%s, Date=%s, Att_size=%d\n", 
-    //    meta.uid, meta.name, meta.fname, meta.date, meta.att_size); // Debug
 
     int reserved = get_reservations_count(eid);
     
@@ -387,7 +262,6 @@ int handle_sed(int conn_fd, const char *args) {
     snprintf(header, sizeof(header), "RSE OK %s %s %s %d %d %s %d ", 
         meta.uid, meta.name, meta.date, meta.att_size, reserved, meta.fname, fsize);
     
-    //printf("Sending header: %s\n", header); // Debug
     write(conn_fd, header, strlen(header));
 
     // Enviar conteúdo do ficheiro

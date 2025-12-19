@@ -28,13 +28,6 @@ void login_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr, 
     }
     
     //Tira o path para a diretoria do ususario
-    /* char* user_path = NULL;
-    asprintf(&user_path, "USERS/%s", uid);
-    char* pass_path = NULL;
-    asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid);
-    char* login_path = NULL;
-    asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
-
     int needed = snprintf(NULL, 0, "Server/USERS/%s", uid);
     char *user_path = malloc(needed + 1);
     snprintf(user_path, needed + 1, "Server/USERS/%s", uid);
@@ -111,7 +104,6 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     sscanf(buffer + 4, "%s %s", uid, password);
 
     if (!uid_is_valid(uid)){
-        //printf("DEBUG 1\n");
         char* reply = "RLO NOK\n"; //UID inválido
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
@@ -122,15 +114,10 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
-    //char *reply;
-    //asprintf(&reply, "RLO "); //Resposta base
 
     int needed = snprintf(NULL, 0, "RLO ");
     char *reply = malloc(needed + 1);
     snprintf(reply, needed + 1, "RLO ");
-    
-    /* char* user_path = NULL;
-    asprintf(&user_path, "USERS/%s", uid); */
 
     int needed_user = snprintf(NULL, 0, "Server/USERS/%s", uid);
     char *user_path = malloc(needed_user + 1);
@@ -143,15 +130,13 @@ void logout_user(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     }
     else{
         //Tudo ok
-        /* char* login_path = NULL;
-        asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
 
         int needed_login = snprintf(NULL, 0, "%s/%s_login.txt", user_path, uid);
         char *login_path = malloc(needed_login + 1);
         snprintf(login_path, needed_login + 1, "%s/%s_login.txt", user_path, uid);
         unlink(login_path);
 
-        //asprintf(&reply, "RLO OK\n"); //Logout com sucesso
+        //Logout com sucesso
         snprintf(reply, needed + 4, "RLO OK\n");
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
         free(login_path);
@@ -176,15 +161,10 @@ void unregister_user(const char *buffer, int udp_fd, struct sockaddr_in client_a
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         return;
     }
-    /* char *reply;
-    asprintf(&reply, "RUR "); //Resposta base */
 
     int needed = snprintf(NULL, 0, "RUR ");
     char *reply = malloc(needed + 1);
     snprintf(reply, needed + 1, "RUR ");
-    
-    /* char* user_path = NULL;
-    asprintf(&user_path, "Server/USERS/%s", uid); */
 
     int needed_user = snprintf(NULL, 0, "Server/USERS/%s", uid);
     char *user_path = malloc(needed_user + 1);
@@ -197,15 +177,10 @@ void unregister_user(const char *buffer, int udp_fd, struct sockaddr_in client_a
     }
     else{
         //Tudo ok
-        /* char* login_path = NULL;
-        asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
 
         int needed_login = snprintf(NULL, 0, "%s/%s_login.txt", user_path, uid);
         char *login_path = malloc(needed_login + 1);
         snprintf(login_path, needed_login + 1, "%s/%s_login.txt", user_path, uid);
-
-        /* char* pass_path = NULL;
-        asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid); */
 
         int needed_pass = snprintf(NULL, 0, "%s/%s_pass.txt", user_path , uid);
         char *pass_path = malloc(needed_pass + 1);
@@ -213,7 +188,7 @@ void unregister_user(const char *buffer, int udp_fd, struct sockaddr_in client_a
         unlink(login_path);
         unlink(pass_path);
 
-        //asprintf(&reply, "RUR OK\n"); //Unregister com sucesso
+        //Unregister com sucesso
         snprintf(reply, needed + 4, "RUR OK\n");
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len); 
         free(login_path);
@@ -240,8 +215,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         return;
     }
     
-    /* char* user_path = NULL;
-    asprintf(&user_path, "Server/USERS/%s", uid); */
 
     int needed_user = snprintf(NULL, 0, "Server/USERS/%s", uid);
     char *user_path = malloc(needed_user + 1);
@@ -254,8 +227,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         return;
     }
 
-    /* char* login_path = NULL;
-    asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
 
     int needed_login = snprintf(NULL, 0, "%s/%s_login.txt", user_path, uid);
     char *login_path = malloc(needed_login + 1);
@@ -269,8 +240,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         return;
     }
 
-    /* char* pass_path = NULL;
-    asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid); */
 
     int needed_pass = snprintf(NULL, 0, "%s/%s_pass.txt", user_path , uid);
     char *pass_path = malloc(needed_pass + 1);
@@ -302,8 +271,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
     struct event_list *events = NULL;
     struct event_list *tail = NULL;
 
-    /* char* created_dir = NULL;
-    asprintf(&created_dir, "%s/CREATED", user_path); */
 
     int needed_created = snprintf(NULL, 0, "%s/CREATED", user_path);
     char *created_dir = malloc(needed_created + 1);
@@ -322,8 +289,6 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
         memcpy(eid, entry->d_name, strlen(entry->d_name) - 4); //sem o .txt
         eid[strlen(entry->d_name) - 4] = '\0';
 
-        /* char* event_path = NULL;
-        asprintf(&event_path, "Server/EVENTS/%s", eid); */
 
         int neede_event = snprintf(NULL, 0, "Server/EVENTS/%s", eid);
         char *event_path = malloc(neede_event + 1);
@@ -370,16 +335,12 @@ void list_events(const char *buffer, int udp_fd, struct sockaddr_in client_addr,
 void create_directories(const char *user_path, const char *uid, const char *password, int udp_fd,
      struct sockaddr_in client_addr, socklen_t client_len){
     //CREATED
-    /* char* created_dir = NULL;
-    asprintf(&created_dir, "%s/CREATED", user_path); */
 
     int needed_created = snprintf(NULL, 0, "%s/CREATED", user_path);
     char *created_dir = malloc(needed_created + 1);
     snprintf(created_dir, needed_created + 1, "%s/CREATED", user_path);
     mkdir(created_dir, 0700);
     //RESERVED
-    /* char* reserved_dir = NULL;
-    asprintf(&reserved_dir, "%s/RESERVED", user_path); */
 
     int neede_reserved = snprintf(NULL, 0, "%s/RESERVED", user_path);
     char *reserved_dir = malloc(neede_reserved + 1);
@@ -389,8 +350,6 @@ void create_directories(const char *user_path, const char *uid, const char *pass
     free(created_dir);
 
     //Criamos ficheiro para a password
-    /* char* pass_path = NULL;
-    asprintf(&pass_path, "%s/%s_pass.txt", user_path, uid); */
 
     int needed_pass = snprintf(NULL, 0, "%s/%s_pass.txt", user_path, uid);
     char *pass_path = malloc(needed_pass + 1);
@@ -401,9 +360,6 @@ void create_directories(const char *user_path, const char *uid, const char *pass
     fprintf(f, "%s\n", password);
     fclose(f);
     free(pass_path);
-
-    /* char* login_path = NULL;
-    asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
 
     int needed_login = snprintf(NULL, 0, "%s/%s_login.txt", user_path, uid);
     char *login_path = malloc(needed_login + 1);
@@ -437,8 +393,6 @@ bool pass_is_valid(const char *password){
 
 void status_events(struct event_list *events, int udp_fd, struct sockaddr_in client_addr, socklen_t client_len){
     //Resposta a ser enviada
-    /* char *reply = NULL;
-    asprintf(&reply, "RME OK "); */
 
     int needed = snprintf(NULL, 0, "RME OK ");
     char *reply = malloc(needed + 1);
@@ -452,15 +406,12 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             current = current->next;
             continue;
         }
-        /* char *end_path = NULL;
-        asprintf(&end_path, "%s/END_%s.txt", current->event_path, current->eid); */
         
         int needed_end = snprintf(NULL, 0, "%s/END_%s.txt", current->event_path, current->eid);
         char *end_path = malloc(needed_end + 1);
         snprintf(end_path, needed_end + 1, "%s/END_%s.txt", current->event_path, current->eid);
         if (path_exists(end_path)) {
             //Evento fechado
-            /* asprintf(&reply, "%s%s 3 ", reply, current->eid); */
 
             int needed = snprintf(NULL, 0, "%s%s 3 ", reply, current->eid);
             char *new_reply = malloc(needed + 1);
@@ -472,9 +423,6 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             continue; 
         } 
         free(end_path);
-
-        /* char *start_path = NULL; */
-        /* asprintf(&start_path, "%s/START_%s.txt", current->event_path, current->eid); */
 
         int neede_start = snprintf(NULL, 0, "%s/START_%s.txt", current->event_path, current->eid);
         char *start_path = malloc(neede_start + 1);
@@ -500,24 +448,10 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
         free(start_content);
         if (check_event_date(start_day, start_month, start_year, start_hour, start_minute)) {
             //Evento futuro
-            /* char *reservations_path = NULL;
-            asprintf(&reservations_path, "%s/RESERVATIONS", current->event_path); */
 
             int needed_reservations = snprintf(NULL, 0, "%s/RES_%s.txt", current->event_path, current->eid);
             char *reservations_path = malloc(needed_reservations + 1);
             snprintf(reservations_path, needed_reservations + 1, "%s/RES_%s.txt", current->event_path, current->eid);
-
-            /* DIR *res_dir = opendir(reservations_path);
-            struct dirent *entry;
-            int n_reservations = 0;
-            while ((entry = readdir(res_dir)) != NULL) {
-                //Ignorar . e ..
-                if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-                    continue;
-                }
-                n_reservations++;
-            }
-            closedir(res_dir); */
 
             FILE *fres = fopen(reservations_path, "r");
             int n_reservations = 0;
@@ -528,7 +462,6 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             free(reservations_path);
             if (n_reservations >= event_attend) {
                 //Evento cheio
-                //asprintf(&reply, "%s%s 2 ", reply, current->eid);
 
                 int needed = snprintf(NULL, 0, "%s%s 2 ", reply, current->eid);
                 char *new_reply = malloc(needed + 1);
@@ -540,8 +473,6 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             }
             else {
                 //Evento com vagas
-                //Evento com vagas
-                //asprintf(&reply, "%s%s 1 ", reply, current->eid);
 
                 int needed = snprintf(NULL, 0, "%s%s 1 ", reply, current->eid);
                 char *new_reply = malloc(needed + 1);
@@ -554,7 +485,6 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
         }
         else {
             //Evento passado
-            //asprintf(&reply, "%s%s 0 ", reply, current->eid);
 
             int needed = snprintf(NULL, 0, "%s%s 0 ", reply, current->eid);
             char *new_reply = malloc(needed + 1);
@@ -565,7 +495,6 @@ void status_events(struct event_list *events, int udp_fd, struct sockaddr_in cli
             continue;
         }
     }
-    //asprintf(&reply, "%s\n", reply);
     size_t len = strlen(reply);
     if (len > 0 && reply[len - 1] == ' ') {
         reply[len - 1] = '\0';
@@ -669,9 +598,6 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         return;
     }
 
-    /* char *user_path = NULL;
-    asprintf(&user_path, "Server/USERS/%s", uid); */
-
     int needed_user = snprintf(NULL, 0, "Server/USERS/%s", uid);
     char *user_path = malloc(needed_user + 1);
     snprintf(user_path, needed_user + 1, "Server/USERS/%s", uid);
@@ -681,9 +607,6 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         free(user_path);
         return;
     }
-
-    /* char *login_path = NULL;
-    asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
 
     int needed_login = snprintf(NULL, 0, "%s/%s_login.txt", user_path, uid);
     char *login_path = malloc(needed_login + 1);
@@ -695,9 +618,6 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         free(login_path);
         return;
     }
-
-    /* char *pass_path = NULL;
-    asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid); */
 
     int needed_pass = snprintf(NULL, 0, "%s/%s_pass.txt", user_path , uid);
     char *pass_path = malloc(needed_pass + 1);
@@ -724,8 +644,6 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
         return;
     }   
     //Resto 
-    /* char *reservation_path = NULL;
-    asprintf(&reservation_path, "Server/USERS/%s/RESERVED", uid); */
 
     int needed_reservation = snprintf(NULL, 0, "Server/USERS/%s/RESERVED", uid);
     char *reservation_path = malloc(needed_reservation + 1);
@@ -735,27 +653,19 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
     struct dirent *entry;
     int n_entries = 0;
 
-    /* char *reply = NULL;
-    asprintf(&reply, "RMR OK "); */
 
     int needed = snprintf(NULL, 0, "RMR OK ");
     char *reply = malloc(needed + 1);
     snprintf(reply, needed + 1, "RMR OK ");
-    //printf("PATH: %s\n", reservation_path);
     while ((entry = readdir(dir)) != NULL && (n_entries <= 50)) {
         //Ignorar . e ..
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
 
-        /* char *file_path = NULL;
-        asprintf(&file_path, "%s/%s", reservation_path, entry->d_name);
- */
         int needed_file = snprintf(NULL, 0, "%s/%s", reservation_path, entry->d_name);
         char *file_path = malloc(needed_file + 1);
         snprintf(file_path, needed_file + 1, "%s/%s", reservation_path, entry->d_name);
-
-        //printf("FILE: %s\n", file_path);
 
         FILE *fres = fopen(file_path, "r");
         if (!fres) {
@@ -788,19 +698,10 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
                 &hour, &minute, &second) == 8)
         {
             n_entries++;//Quantas reservations existem
-            //printf("ADICIONAMOS\n");
-            /* char *temp = NULL;
-            asprintf(&temp, "%s %02d-%02d-%04d %02d:%02d:%02d %d ", eid_value, day, month, year, hour, minute, second, seats); */
 
             int needed_temp = snprintf(NULL, 0, "%s %02d-%02d-%04d %02d:%02d:%02d %d ", eid_value, day, month, year, hour, minute, second, seats);
             char *temp = malloc(needed_temp + 1);
             snprintf(temp, needed_temp + 1, "%s %02d-%02d-%04d %02d:%02d:%02d %d ", eid_value, day, month, year, hour, minute, second, seats);
-
-
-
-
-            /* char *new_reply = NULL;
-            asprintf(&new_reply, "%s%s", reply, temp); */
 
             int needed_reply = snprintf(NULL, 0, "%s%s", reply, temp);
             char *new_reply = malloc(needed_reply + 1);
@@ -808,20 +709,17 @@ void list_reservations(const char *buffer, int udp_fd, struct sockaddr_in client
 
             free(reply);
             free(temp);
-            //free(eid_value);
             reply = new_reply;
         }
     }
 
     if (n_entries <= 0){
         char* reply = "RMR NOK\n"; //Não existem reservas
-        //printf("YQUEFUE\n");
         sendto(udp_fd, reply, strlen(reply), 0, (struct sockaddr*)&client_addr, client_len);
         free(reservation_path);
         closedir(dir);
         return;
     }
-    /* asprintf(&reply, "%s\n", reply) */;
     size_t len = strlen(reply);
     if (len > 0 && reply[len - 1] == ' ') {
         reply[len - 1] = '\0';
@@ -843,16 +741,12 @@ bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t clien
 
     if (dir_exists(user_path)){
         //Verificar se esta logged in
-        /* char* login_path = NULL;
-        asprintf(&login_path, "%s/%s_login.txt", user_path, uid); */
 
         int needed_login = snprintf(NULL, 0, "%s/%s_login.txt", user_path, uid);
         char *login_path = malloc(needed_login + 1);
         snprintf(login_path, needed_login + 1, "%s/%s_login.txt", user_path, uid);
 
         if (path_exists(login_path)) {
-            /* char* pass_path = NULL;
-            asprintf(&pass_path, "%s/%s_pass.txt", user_path , uid); */
 
             int needed_user = snprintf(NULL, 0, "%s/%s_pass.txt", user_path , uid);
             char *pass_path = malloc(needed_user + 1);
@@ -860,8 +754,6 @@ bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t clien
 
             FILE *f = fopen(pass_path, "r");
             if (f == NULL) {
-                /* char *temp = NULL; 
-                asprintf(&temp, "%sNOK\n", reply); //Erro ao abrir ficheiro */
 
                 int needed_temp = snprintf(NULL, 0, "%sNOK\n", reply);
                 char *temp = malloc(needed_temp + 1);
@@ -885,8 +777,6 @@ bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t clien
             } 
 
             else {
-                /* char *temp = NULL;
-                asprintf(&temp, "%sWRP\n", reply); //Password errada */
 
                 int needed_temp = snprintf(NULL, 0, "%sWRP\n", reply);
                 char *temp = malloc(needed_temp + 1);
@@ -899,8 +789,6 @@ bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t clien
             }
         } 
         else {
-            /* char *temp = NULL;
-            asprintf(&temp, "%sNOK\n", reply); //Não está logged in */
 
             int needed_temp = snprintf(NULL, 0, "%sNOK\n", reply);
             char *temp = malloc(needed_temp + 1);
@@ -914,8 +802,6 @@ bool standard_checks(int udp_fd, struct sockaddr_in client_addr, socklen_t clien
     }
 
     else{//Usuario nunca foi registado 
-        /* char *temp = NULL;
-        asprintf(&temp, "%sUNR\n", reply); //Usuario não registado */
 
         int needed_temp = snprintf(NULL, 0, "%sUNR\n", reply);
         char *temp = malloc(needed_temp + 1);

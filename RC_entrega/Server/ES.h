@@ -27,14 +27,14 @@
 #define DATE_SIZE_SEC 19 // DD-MM-YYYY HH:MM:SS
 #define P_DATE_SIZE 10 // DD-MM-YYYY
 #define TIME_SIZE 5 // HH:MM
-#define ATT_SIZE_STR 3 // max attendance size as string (max 3 digits)
+#define ATT_SIZE_STR 3 // max attendance size as string (max 3 digitos)
 #define MIN_ATT 10
 #define MAX_ATT 999
 #define F_NAME_SIZE 24
-#define F_SIZE_STR 8 // max file size as string (max 7 digits)
+#define F_SIZE_STR 8 // max file size as string (max 7 digitos)
 #define F_SIZE 10000000 // 10MB
 #define EID_SIZE 3
-#define PP_SIZE_STR 3 // max people to reserve as string (max 3 digits)
+#define PP_SIZE_STR 3 // max people to reserve as string (max 3 digitos)
 #define MIN_PP 1
 #define MAX_PP 999
 
@@ -241,20 +241,12 @@ int check_future_date(const char *date);
 int check_future_event(const char *eid_str);
 
 /**
- * Handle the CRE command to create an event
- * @args: UID password name event_date attendance_size Fname Fsize Fdata
- * @connect_fd: TCP socket to send replies
- * Return: 1 on success, 0 on failure
- */
-int handle_cre(int conn_fd, char *header_buffer, int bytes_read);
-
-/**
  * Handle the CLS command to close an event
  * @args: UID password EID
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-//int handle_cls(const char *args, int connect_fd);
+int handle_cls(int conn_fd, const char *args);
 
 /**
  * Handle the LST command to list events
@@ -262,7 +254,7 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-//int handle_lst(const char *args, int connect_fd);
+int handle_lst(int conn_fd);
 
 /**
  * Handle the SED command to send event data
@@ -270,7 +262,7 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-//int handle_sed(const char *args, int connect_fd);
+int handle_sed(int conn_fd, const char *args);
 
 /**
  * Handle the RID command to make a reservation
@@ -278,7 +270,7 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-//int handle_rid(const char *args, int connect_fd);
+int handle_rid(int conn_fd, const char *args);
 
 /**
  * Handle the CPS command to change password
@@ -286,4 +278,4 @@ int handle_cre(int conn_fd, char *header_buffer, int bytes_read);
  * @connect_fd: TCP socket to send replies
  * Return: 1 on success, 0 on failure
  */
-//int handle_cps(const char *args, int connect_fd);
+int handle_cps(int conn_fd, const char *args);
