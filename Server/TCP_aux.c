@@ -309,7 +309,7 @@ int handle_cls(int conn_fd, const char *args) {
 }
 
 // --- LIST EVENTS (LST) ---
-/* int handle_lst(int conn_fd) {
+int handle_lst(int conn_fd) {
     DIR *d;
     struct dirent *dir;
     d = opendir("EVENTS");
@@ -338,7 +338,7 @@ int handle_cls(int conn_fd, const char *args) {
         
         // Formatar entrada: " EID name state date time"
         char entry[128];
-        snprintf(entry, sizeof(entry), " %s %s %d %s", eid, meta.name, state, meta.date);
+        snprintf(entry, sizeof(entry), " %.6s %s %d %s", eid, meta.name, state, meta.date);
         
         // Buffer management: se encher, envia e limpa
         if (offset + strlen(entry) + 2 >= sizeof(resp_buf)) {
@@ -358,7 +358,7 @@ int handle_cls(int conn_fd, const char *args) {
     }
     return 1;
 }
- */
+
 // --- SHOW EVENT DETAILS (SED) ---
 int handle_sed(int conn_fd, const char *args) {
     char eid[EID_SIZE+1];

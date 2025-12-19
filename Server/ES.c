@@ -362,11 +362,11 @@ void parse_tcp_command(char *line, int connect_fd) {
         handle_cls( connect_fd, line + MAX_CMD);
 
     } 
-    /* else if (strcmp(cmd, "LST") == 0) {
+    else if (strcmp(cmd, "LST") == 0) {
         // list (mostrar eventos)
-        handle_lst(line + MAX_CMD, connect_fd);
+        handle_lst( connect_fd);
 
-    }  */
+    } 
     else if (strcmp(cmd, "SED") == 0) {
         // show (dar ficheiro de evento)
         //printf("[TCP] Handling SED command\n");
