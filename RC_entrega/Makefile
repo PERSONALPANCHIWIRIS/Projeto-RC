@@ -49,3 +49,7 @@ db_clean:
 	mkdir Server/EVENTS
 	rm -rf Client/SHOW
 	mkdir Client/SHOW
+	rm -rf Client/ASSETS
+	mkdir Client/ASSETS
+	rm -rf Client/SHOW
+	mkdir Client/SHOW
